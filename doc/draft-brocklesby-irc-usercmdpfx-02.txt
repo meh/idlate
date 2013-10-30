@@ -1,0 +1,388 @@
+Network Working Group                                      E. Brocklesby
+INTERNET-DRAFT                                             November 2002
+Expires: May 2003
+
+                     IRC Command Prefix Capability
+                   draft-brocklesby-irc-usercmdpfx-02
+
+Status of this Document
+
+   This document is an Internet-Draft and is in full conformance with
+   all provisions of Section 10 of RFC2026.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF), its areas, and its working groups.  Note that
+   other groups may also distribute working documents as Internet-
+   Drafts.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   The list of current Internet-Drafts can be accessed at
+   http://www.ietf.org/ietf/1id-abstracts.txt
+
+   The list of Internet-Draft Shadow Directories can be accessed at
+   http://www.ietf.org/shadow.html.
+
+
+   This document is a product of an individual.  Comments are solicited
+   and should be addressed to the author.
+
+Copyright Notice
+
+   Copyright (C) The Internet Society (2002). All Rights Reserved.
+
+Abstract
+
+     This memo presents a method for a client to prefix commands sent to
+     an IRC (Internet Relay Chat) server with a label, in order to match
+     server replies against commands previously sent, without having to
+     keep excessive state on the server connection.  It is a primary
+     goal to implement this in a way which is completely backwards-
+     compatible with existing IRC servers.
+
+     This documents describes an extention to the Internet Relay Chat
+     protocol as described in RFC 1459 [1].
+
+
+
+
+Brocklesby                                                      [Page 1]
+
+INTERNET-DRAFT              Expires: May 2003              November 2002
+
+
+                           Table of Contents
+
+
+1. Introduction. . . . . . . . . . . . . . . . . . . . . . . . . . .   2
+ 1.1. Motivation . . . . . . . . . . . . . . . . . . . . . . . . . .   2
+ 1.2. Terminology. . . . . . . . . . . . . . . . . . . . . . . . . .   2
+2. Outline of the protocol . . . . . . . . . . . . . . . . . . . . .   2
+3. Compatibility . . . . . . . . . . . . . . . . . . . . . . . . . .   3
+4. Impact on the server-server protocol. . . . . . . . . . . . . . .   3
+5. Message Format. . . . . . . . . . . . . . . . . . . . . . . . . .   4
+6. Interaction with remote commands. . . . . . . . . . . . . . . . .   4
+7. Capability negotiation. . . . . . . . . . . . . . . . . . . . . .   5
+ 7.1. RPL_ISUPPORT (005) numeric . . . . . . . . . . . . . . . . . .   5
+8. New numerics. . . . . . . . . . . . . . . . . . . . . . . . . . .   5
+ 8.1. ERR_PFXUNROUTABLE (525). . . . . . . . . . . . . . . . . . . .   5
+9. Security Considerations . . . . . . . . . . . . . . . . . . . . .   6
+10. Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . .   6
+11. References . . . . . . . . . . . . . . . . . . . . . . . . . . .   6
+12. Author's address . . . . . . . . . . . . . . . . . . . . . . . .   6
+13. Full Copyright Statement . . . . . . . . . . . . . . . . . . . .   6
+
+1.  Introduction
+
+1.1.  Motivation
+
+     Currently, interaction between the IRC client and the server
+     requires the client to keep an amount of state regarding the
+     current connection.  For example, caching of other client's
+     usernames and hosts by the client requires that it request a
+     listing of channel members (via the WHO command) and process the
+     reply.  In order to prevent misinterpreting WHO requests by the
+     user, the client must keep state on the order of WHO commands which
+     have been sent to the server, and match each received reply to a
+     command on the queue.  This is prone to error, and does not
+     gracefully handle losing the state of the queue.
+
+     This memo proposes an alternative method for tracking the state of
+     commands sent to the server; it is not specific to the WHO command,
+     but may be applied to any command.
+
+1.2.  Terminology
+
+     Original IRC protocol: The original IRC protocol as described in
+     RFC 1459 [1].
+
+     The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+     "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in
+     this document are to be interpreted as described in RFC 2119 [2].
+
+
+
+Brocklesby                                        Section 1.2.  [Page 2]
+
+INTERNET-DRAFT              Expires: May 2003              November 2002
+
+
+     The ABNF syntax used in this document is defined in RFC 2234 [3].
+
+     The phrase "keeping state" is used in this document to mean storing
+     information in the client about the state of the connection to the
+     server; for example, commands for which it is expecting replies.
+
+2.  Outline of the protocol
+     The command prefix proposal allows a client to prefix each command
+     sent to the server with a label, followed by the actual command.
+     The server will then use this prefix when sending replies generated
+     by this command to the client.  An example session might be:
+
+          Client --> "*W001 WHO #epic"
+
+          Server <-- "*W001 :irc.example.com 352 larne #epic chady
+               irc.concentric.net irc.concentric.net chady H*@ :5 Moo!"
+
+          Server <-- "*W001 :irc.example.com 315 larne #epic :End of
+               /WHO list."
+
+          Client --> "*T001 TIME"
+
+          Client --> "*J001 JOIN #testing123"
+
+          Server <-- "*T001 :irc.example.com 391 larne irc.example.com
+               :Thursday September 12 2002 -- 01:54:19 +02:00"
+
+          Server <-- "*J001 :larne!ejb@user.example.com JOIN
+               :#testing123"
+
+          Server <-- "*J001 :irc.example.com MODE #testing123 +nt"
+
+          Server <-- "*J001 :irc.example.com 353 larne = #testing123
+               :@larne"
+
+          Server <-- "*J001 :irc.example.com 366 larne #testing123 :End
+               of /NAMES list."
+
+          Client --> "QUIT"
+
+          Server <-- "ERROR :Closing Link: user.example.com (Client
+               Quit)"
+
+     The client is therefore able to determine exactly which request
+     generated the replies it receives.
+
+     The client and server should negotiate to determine whether support
+     for command prefixes is available; this process is described in
+
+
+
+Brocklesby                                          Section 2.  [Page 3]
+
+INTERNET-DRAFT              Expires: May 2003              November 2002
+
+
+     section 7.
+
+3.  Compatibility
+
+     Because the command prefix capability is negotiated by the client
+     and server, it will only be used when both the server and client
+     agree to support it.  This memo therefore does not introduce any
+     incompatible changes to the IRC protocol.
+
+4.  Impact on the server-server protocol
+
+     While the command prefix proposal allows remote prefixes, which
+     would presumably require a change in the server-server protocol
+     used by the IRC server software to communicate, the author does not
+     believe that it is beneficial to the IRC community to attempt to
+     define any aspect of the server protocol.  Therefore this memo does
+     not address the server-server protocol.
+
+5.  Message Format
+
+     Any command sent to the server by the client may be proceeded by a
+     prefix token, followed by a single space.  It is not required that
+     the client sends a prefix for a command.  The ABNF representation
+     of a prefix is:
+
+          prefix = "*" 1*10alnum
+          alnum = ALPHA / DIGIT
+
+     An asterisk was chosen to introduce the prefix because it is not a
+     valid character in this position under normal circumstances, and
+     thus no ambiguity is introduced in the prefix message.
+
+     This prefix should be present at the start of the line sent to the
+     server, and the command should follow the prefix unchanged.  The
+     prefix must be followed by exactly one space character (ASCII
+     0x20).
+
+     When the server receives a command from a client with a prefix
+     present, it MUST prefix all replies (both numerics and commands)
+     generated by that command with the prefix the client specified.
+     The returned prefix shall have the same form as that sent by the
+     client; that is, it shall occur at the beginning of the line, and
+     should be separated from the reply by exactly 1 space character.
+     The rest of the reply shall follow on the same line as the prefix
+     as normal.
+
+     If the client sends a prefix which has an invalid format, for
+     example it is over 10 characters in length, the server should
+
+
+
+Brocklesby                                          Section 5.  [Page 4]
+
+INTERNET-DRAFT              Expires: May 2003              November 2002
+
+
+     ignore the prefix, and process the command as if the prefix was not
+     provided.
+
+     The server MUST NOT send a prefix to replies when the client did
+     not specify a prefix in the command generating the reply.  If the
+     client receives a prefix which it was not expecting -- for example,
+     it did not send a command with a corresponding prefix -- it should
+     treat the message as if it did not contain a prefix.  It is
+     expected that this could occur during remote queries where the
+     client changes its nickname before the reply is received.  Note,
+     however, that the client should not use presence of an unexpected
+     prefix to indicate misdelivery of a message.
+
+6.  Interaction with remote commands
+
+     It is recommended, though not required, that the server should
+     support command prefixes for remote commands.
+
+     If the server receives a command to be executed remotely which
+     includes a prefix, the command should be forwarded as normal, along
+     with the prefix.  Any replies generated in response to this
+     command, whether from the local server, the target (remote) server
+     or any intermediate server forwarding the command, MUST contain the
+     prefix specified by the client.
+
+     If the message is unable to be delivered to the target server with
+     the prefix intact, the command MUST NOT be executed by any server.
+     Instead, the server which is unable to forward the message should
+     reply to the client with an ERR_PFXUNROUTABLE (525) numeric.  This
+     reply MUST be delivered with the prefix supplied by the client for
+     the original message.
+
+     Note that the server should take all reasonable measures to ensure
+     that an error message is delivered to the client in the case where
+     a prefixed message cannot be delivered.  However, it is sometimes
+     unavoidable that messages will be lost in transit, and never
+     arrive.  The client therefore MUST NOT rely on a reply to any
+     remote prefixed command being delivered.
+
+7.  Capability negotiation
+
+     The client should not send command prefixes to the server unless
+     the server has indicated that it understands them. This is handled
+     through the RPL_ISUPPORT numeric.
+
+
+
+
+
+
+
+Brocklesby                                          Section 7.  [Page 5]
+
+INTERNET-DRAFT              Expires: May 2003              November 2002
+
+
+7.1.  RPL_ISUPPORT (005) numeric
+
+     The server should advertise to the client that it supports command
+     prefixes via the RPL_ISUPPORT numeric.  This numeric is described
+     in draft-brocklesby-irc-isupport-00 [4]. In this case, the ISUPPORT
+     token USERCMDPFX should be sent by the server to indicate that it
+     supports command prefixes.
+
+     The USERCMDPFX token must not be specified with a value; if a value
+     is given, the client should treat the token as if it was specified
+     without a value.
+
+8.  New numerics
+
+     This memo introduces one new numeric.
+
+8.1.  ERR_PFXUNROUTABLE (525)
+
+     "<nickname> :Remote prefixed command could not be delivered."
+
+     The ERR_PFXUNROUTABLE reply is sent by the server when a command
+     with a prefix which was due to be forwarded to another server for
+     execution could not be delivered.  This reply MUST contain the
+     prefix specified by the client for the original message.
+
+9.  Security Considerations
+
+     This memo does not raise any security considerations.
+
+10.  Acknowledgements
+
+     The author gratefully acknowledges the contributions of Jeremy
+     Nelson, Daniel C.  Sobral, Bill Fenner, Kurt Roeckx, and Petr
+     Baudis in the preparation of this document.
+
+11.  References
+
+     [1] Oikarinen, J. and D. Reed, "Internet Relay Chat Protocol", RFC
+          1459, May 1993.
+
+     [2] Bradner, S., "Key words for use in RFCs to Indicate Requirement
+          Levels", RFC 2119, March 1997.
+
+     [3] Crocker, D. and P. Overell, "Augmented BNF for Syntax
+          Specifications: ABNF", RFC 2234, November 1997.
+
+     [4] Brocklesby, E., "IRC RPL_ISUPPORT Numeric Definition", Internet
+          draft, November 2002.
+
+
+
+Brocklesby                                         Section 11.  [Page 6]
+
+INTERNET-DRAFT              Expires: May 2003              November 2002
+
+
+12.  Author's address
+
+     Edward Brocklesby
+     57 Williamson Way
+     Oxford  OX4 4TU
+     UK
+
+     Phone: +44 1865 452230
+     EMail: ejb@hades.skumler.net
+
+13.  Full Copyright Statement
+
+     Copyright (C) The Internet Society (2002). All Rights Reserved.
+
+     This document and translations of it may be copied and furnished to
+     others, and derivative works that comment on or otherwise explain
+     it or assist in its implementation may be prepared, copied,
+     published and distributed, in whole or in part, without restriction
+     of any kind, provided that the above copyright notice and this
+     paragraph are included on all such copies and derivative works.
+     However, this document itself may not be modified in any way, such
+     as by removing the copyright notice or references to the Internet
+     Society or other Internet organizations, except as needed for the
+     purpose of developing Internet standards in which case the
+     procedures for copyrights defined in the Internet Standards process
+     must be followed, or as required to translate it into languages
+     other than English.
+
+     The limited permissions granted above are perpetual and will not be
+     revoked by the Internet Society or its successors or assigns.
+
+     This document and the information contained herein is provided on
+     an "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET
+     ENGINEERING TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR
+     IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF
+     THE INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED
+     WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Brocklesby                                         Section 13.  [Page 7]
