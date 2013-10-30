@@ -339,10 +339,9 @@ defnumeric Response.UsersStart, 392, [] do
   end
 end
 
-# FIXME: what
-defnumeric Response.Users, 393, [] do
-  def to_string() do
-    ":%-8s %-9s %-8s"
+defnumeric Response.Users, 393, [:user, :tty, :host] do
+  def to_string(__MODULE__[user: user, tty: tty, host: host]) do
+    ":#{user} #{tty} #{host}"
   end
 end
 
