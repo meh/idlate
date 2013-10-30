@@ -52,7 +52,7 @@ end
 
 defnumeric Response.WhoisUser, 311, [:nick, :user, :host, :real_name] do
   def to_string(__MODULE__[nick: nick, user: user, host: host, real_name: real_name]) do
-      "#{nick} #{user} #{host} * :#{real_name}"
+    "#{nick} #{user} #{host} * :#{real_name}"
   end
 end
 
@@ -145,7 +145,7 @@ end
 
 defnumeric Response.ChannelModeIs, 324, [:name, :modes] do
   def to_string(__MODULE__[name: name, modes: modes]) do
-      "#{name} #{modes}"
+    "#{name} #{modes}"
   end
 end
 
@@ -159,21 +159,21 @@ end
 # If the topic is set, RPL_TOPIC is sent back else RPL_NOTOPIC.
 defnumeric Response.Topic, 332, [:channel, :topic] do
   def to_string(__MODULE__[channel: channel, topic: topic]) do
-      "#{channel} :#{topic}"
+    "#{channel} :#{topic}"
   end
 end
 
 # Returned by the server to indicate that the attempted INVITE message was successful and is being passed onto the end client.
 defnumeric Response.Inviting, 341, [:nick, :channel] do
   def to_string(__MODULE__[nick: nick, channel: channel]) do
-      "#{nick} #{channel}"
+    "#{nick} #{channel}"
   end
 end
 
 # Returned by a server answering a SUMMON message to indicate that it is summoning that user.
 defnumeric Response.Summoing, 342, [:user] do
   def to_string(__MODULE__[user: user]) do
-      "#{user} :Summoning user to IRC"
+    "#{user} :Summoning user to IRC"
   end
 end
 
@@ -182,7 +182,7 @@ end
 # The "comments" field may contain any comments about the version or further version details.
 defnumeric Response.Version, 351, [:version, :host, :comments] do
   def to_string(__MODULE__[version: version, host: host, comments: comments]) do
-      "idlate-#{version}. #{host} :#{comments}"
+    "idlate-#{version}. #{host} :#{comments}"
   end
 end
 
@@ -199,13 +199,13 @@ end
 # If there is a list of parameters supplied with a WHO message, a RPL_ENDOFWHO must be sent after processing each list item with <name> being the item.
 defnumeric Response.EndOfWho, 315, [:name] do
   def to_string(__MODULE__[name: name]) do
-      "#{name} :End of /WHO list"
+    "#{name} :End of /WHO list"
   end
 end
 
 defnumeric Response.NameReply, 353, [:channel, :users] do
   def to_string(__MODULE__[channel: channel, users: users]) do
-      "= #{channel} :#{users |> Enum.join("")}"
+    "= #{channel} :#{users |> Enum.join("")}"
   end
 end
 
@@ -214,26 +214,26 @@ end
 # The exception to this is when a NAMES message is sent with no parameters and all visible channels and contents are sent back in a series of RPL_NAMEREPLY messages with a RPL_ENDOFNAMES to mark the end.
 defnumeric Response.EndOfNames, 366, [:channel] do
   def to_string(__MODULE__[channel: channel]) do
-      "#{channel} :End of /NAMES list"
+    "#{channel} :End of /NAMES list"
   end
 end
 
 defnumeric Response.Links, 364, [:mask, :host, :hopcount, :info] do
   def to_string(__MODULE__[mask: mask, host: host, hopcount: hopcount, info: info]) do
-      "#{mask} #{host} :#{hopcount} #{info}"
+    "#{mask} #{host} :#{hopcount} #{info}"
   end
 end
 
 # In replying to the LINKS message, a server must send replies back using the RPL_LINKS numeric and mark the end of the list using an RPL_ENDOFLINKS reply.v 
 defnumeric Response.EndOfLinks, 365, [:mask] do
   def to_string(__MODULE__[mask: mask]) do
-      "#{mask} :End of /LINKS list"
+    "#{mask} :End of /LINKS list"
   end
 end
 
 defnumeric Response.BanList, 367, [:channel, :mask] do
   def to_string(__MODULE__[channel: channel, mask: mask]) do
-      "#{channel} #{mask}"
+    "#{channel} #{mask}"
   end
 end
 
@@ -241,56 +241,56 @@ end
 # A separate RPL_BANLIST is sent for each active banid. After the banids have been listed (or if none present) a RPL_ENDOFBANLIST must be sent.
 defnumeric Response.EndOfBanList, 368, [:channel] do
   def to_string(__MODULE__[channel: channel]) do
-      "#{channel} :End of channel ban list"
+    "#{channel} :End of channel ban list"
   end
 end
 
 defnumeric Response.ExceptionList, 348, [:channel, :mask] do
   def to_string(__MODULE__[channel: channel, mask: mask]) do
-      "#{channel} #{mask}"
+    "#{channel} #{mask}"
   end
 end
 
 defnumeric Response.EndOfExceptionList, 349, [:channel] do
   def to_string(__MODULE__[channel: channel]) do
-      "#{channel} :End of channel exception list"
+    "#{channel} :End of channel exception list"
   end
 end
 
 defnumeric Response.InviteList, 346, [:channel, :mask] do
   def to_string(__MODULE__[channel: channel, mask: mask]) do
-      "#{channel} #{mask}"
+    "#{channel} #{mask}"
   end
 end
 
 defnumeric Response.EndOfInviteList, 347, [:channel] do
   def to_string(__MODULE__[channel: channel]) do
-      "#{channel} :End of channel invite list"
+    "#{channel} :End of channel invite list"
   end
 end
 
 defnumeric Response.Info, 371, [:string] do
   def to_string(__MODULE__[string: string]) do
-      ":#{string}"
+    ":#{string}"
   end
 end
 
-#A server responding to an INFO message is required to send all its 'info' in a series of RPL_INFO messages with a RPL_ENDOFINFO reply to indicate the end of the replies.
+# A server responding to an INFO message is required to send all its 'info' in a series of RPL_INFO messages with a RPL_ENDOFINFO reply to indicate the end of the replies.
 defnumeric Response.EndOfInfo, 374, [] do
   def to_string() do
-      ":End of /INFO list"
+    ":End of /INFO list"
   end
 end
 
 defnumeric Response.ModdStart, 375, [:host] do
   def to_string(__MODULE__[host: host]) do
-      ":- #{host} Message of the day - "
+    ":- #{host} Message of the day - "
   end
 end
 
 defnumeric Response.Motd, 372, [:text] do
   def to_string(__MODULE__[text: text]) do
-      ":- #{text}"
+    ":- #{text}"
   end
 end
 
@@ -298,21 +298,21 @@ end
 # These should be surrounded by a RPL_MOTDSTART (before the RPL_MOTDs) and an RPL_ENDOFMOTD (after).
 defnumeric Response.EndOfMotd, 376, [] do
   def to_string() do
-      ":End of /MOTD command"
+    ":End of /MOTD command"
   end
 end
 
 # RPL_YOUREOPER is sent back to a client which has just successfully issued an OPER message and gained operator status.
 defnumeric Response.YourOper, 381, [] do
   def to_string() do
-      ":You are now an IRC operator"
+    ":You are now an IRC operator"
   end
 end
 
 # If the REHASH option is used and an operator sends a REHASH message, an RPL_REHASHING is sent back to the operator.
 defnumeric Response.Rehashing, 382, [:path] do
   def to_string(__MODULE__[path: path]) do
-      "#{path} :Rehashing"
+    "#{path} :Rehashing"
   end
 end
 
@@ -321,26 +321,26 @@ end
 # There is no further requirement for the time string.
 defnumeric Response.Time, 391, [:host, :time] do
   def to_string(__MODULE__[host: host, time: time]) do
-      "#{host} :#{time}"
+    "#{host} :#{time}"
   end
 end
 
 defnumeric Response.UsersStart, 392, [] do
   def to_string() do
-      ":UserID Terminal Host"
+    ":UserID Terminal Host"
   end
 end
 
 # FIXME: what
 defnumeric Response.Users, 393, [] do
   def to_string() do
-      ":%-8s %-9s %-8s"
+    ":%-8s %-9s %-8s"
   end
 end
 
 defnumeric Response.EndOfUsers, 394, [] do
   def to_string() do
-      ":End of users"
+    ":End of users"
   end
 end
 
@@ -349,49 +349,49 @@ end
 # Following this is RPL_ENDOFUSERS.
 defnumeric Response.NoUsers, 395, [] do
   def to_string() do
-      ":Nobody logged in"
+    ":Nobody logged in"
   end
 end
 
 defnumeric Response.TraceLink, 200, [:version, :debug_level, :dest, :next_host] do
   def to_string(__MODULE__[version: version, debug_level: debug_level, dest: dest, next_host: next_host]) do
-      "Link #{version} #{debug_level} #{dest} #{next_host}"
+    "Link #{version} #{debug_level} #{dest} #{next_host}"
   end
 end
 
 defnumeric Response.TraceConnecting, 201, [:class, :host] do
   def to_string(__MODULE__[class: class, host: host]) do
-      "Try. #{class} #{host}"
+    "Try. #{class} #{host}"
   end
 end
 
 defnumeric Response.TraceHandshake, 202, [:class, :host] do
   def to_string(__MODULE__[class: class, host: host]) do
-      "H.S. #{class} #{host}"
+    "H.S. #{class} #{host}"
   end
 end
 
 defnumeric Response.TraceUnknown, 203, [:class, :ip] do
   def to_string(__MODULE__[class: class, ip: ip]) do
-      "???? #{class} #{ip}"
+    "???? #{class} #{ip}"
   end
 end
 
 defnumeric Response.TraceOperator, 204, [:class, :nick] do
   def to_string(__MODULE__[class: class, nick: nick]) do
-      "Oper #{class} #{nick}"
+    "Oper #{class} #{nick}"
   end
 end
 
 defnumeric Response.Traceclass, 205, [:class, :nick] do
   def to_string(__MODULE__[class: class, nick: nick]) do
-      "class #{class} #{nick}"
+    "class #{class} #{nick}"
   end
 end
 
 defnumeric Response.TraceServer, 206, [:class] do
   def to_string(__MODULE__[class: class]) do
-      "Serv #{class} <int>S <int>C <server> <nick!user|*!*>@<host|server>"
+    "Serv #{class} <int>S <int>C <server> <nick!user|*!*>@<host|server>"
   end
 end
 
@@ -415,7 +415,7 @@ end
 
 defnumeric Response.ServInfo, 4, [:host, :version, :client, :channel] do
   def to_string(__MODULE__[host: host, version: version, client: client, channel: channel]) do
-      "#{host} idlate-#{version} #{client} #{channel}"
+    "#{host} idlate-#{version} #{client} #{channel}"
   end
 end
 
