@@ -186,12 +186,20 @@ defnumeric Response.Version, 351, [:version, :host, :comments] do
   end
 end
 
-#FIXME: do it
-defnumeric Response.WhoReply, 352, [] do
-  def to_string do
-    #text: %q{#{value[:channel]} #{value[:user][:user]} #{value[:user][:host]} #{value[:server]} #{value[:user][:nick]} #{'H' || 'G'}#{value[:user][:level]} :#{value[:hops]} #{value[:user][:real_name]}}
-    ""
+defnumeric Response.WhoReply, 352, [:channel, :user, :host, :server, :nick, :away?, :ircop?, :level!, :hops, :real_name] do
+  def to_string(__MODULE__[channel: channel, user: user, host: host, server: server, nick: nick, away?: away?, ircop?: ircop?, level!: level!, hops: hops, real_name: real_name]) do
+    "#{channel} #{user} #{host} #{server} #{nick} #{away(away?)}#{ircop(ircop?)}#{level(level!)} :#{hops} #{real_name}"
   end
+
+  defp away(true),  do: "G"
+  defp away(false), do: "H"
+
+  defp ircop(true),  do: "*"
+  defp ircop(false), do: ""
+
+  defp level(:voice),  do: "+"
+  defp level(:chanop), do: "@"
+  defp level(_),       do: ""
 end
 
 # The RPL_WHOREPLY and RPL_ENDOFWHO pair are used to answer a WHO message.
