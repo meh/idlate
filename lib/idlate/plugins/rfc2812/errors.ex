@@ -1,1 +1,1 @@
-use Idlate.RFC2812
+use Idlate.RFC2812.DSL

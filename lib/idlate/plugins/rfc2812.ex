@@ -9,27 +9,16 @@ defmodule Idlate.RFC2812 do
     def pad(n) when n < 1000, do: "#{n}"
   end
 
-  defmacro __using__(_opts) do
-    quote do
-      import Idlate.RFC2812
-    end
+  use Idlate.Plugin
+  alias __MODULE__.Event
+
+  def event_for("PRIVMSG " <> rest) do
+    [nick, content] = String.split(rest, ":", global: false)
+
+    Event.Message[to: String.rstrip(nick), content: content]
   end
 
-  defmacro defnumeric(name, number, fields, do: body) do
-    quote do
-      defrecord Idlate.RFC2812.unquote(name), unquote(fields) do
-        def number do
-          unquote(number)
-        end
-
-        unquote(body)
-
-        defimpl String.Chars, for: __MODULE__ do
-          def to_string(self) do
-            Idlate.RFC2812.unquote(name).to_string(self)
-          end
-        end
-      end
-    end
+  def handle(Event.Message[]) do
+    "hue"
   end
 end
