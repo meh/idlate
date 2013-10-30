@@ -9,7 +9,7 @@ defmodule Idlate do
 
   use GenServer.Behaviour
 
-  defrecord State, supervisor: nil, connections: HashDict.new
+  defrecord State, supervisor: nil, clients: HashDict.new
 
   def init([]) do
     case Idlate.Supervisor.start_link do
@@ -27,16 +27,20 @@ defmodule Idlate do
     { :noreply, _state }
   end
 
-  def handle_cast({ connection, :connected }, State[connections: connections] = state) do
-    state = connections |> Dict.put(Idlate.Client.id(connection), connection) |> state.connections
-
-    IO.inspect state
+  def handle_cast({ client, :connected }, State[clients: clients] = state) do
+    state = clients |> Dict.put(Idlate.Client.id(client), client) |> state.clients
 
     { :noreply, state }
   end
 
-  def handle_cast({ :handle, client, line }, _state) do
-    IO.inspect { client, line }
+  def handle_cast({ client, :disconnected }, State[clients: clients] = state) do
+    state = clients |> Dict.delete(Idlate.Client.id(client)) |> state.clients
+
+    { :noreply, state }
+  end
+
+  def handle_cast({ client, :handle, line }, _state) do
+    Line.start(Process.self, client, line)
 
     { :noreply, _state }
   end
