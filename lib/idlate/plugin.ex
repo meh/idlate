@@ -16,12 +16,15 @@ defmodule Idlate.Plugin do
 
   defmacro __using__(_opts) do
     quote do
-      alias Idlate.Event
-      alias Idlate.Channel
-      alias Idlate.Mask
-
-      @behaviour Idlate.Plugin
+      import          unquote(__MODULE__)
+      @behaviour      unquote(__MODULE__)
       @before_compile unquote(__MODULE__)
+
+      @input  false
+      @pre    false
+      @handle false
+      @post   false
+      @output false
 
       def init(_options) do
         { :ok, nil }
@@ -46,8 +49,14 @@ defmodule Idlate.Plugin do
           { :ok, reply, state } ->
             { :reply, reply, state }
 
+          { :ok, state } ->
+            { :reply, :ok, state }
+
           { :error, reason, state } ->
             { :reply, { :error, reason }, state }
+
+          { :error, state } ->
+            { :reply, :error, state }
         end
       end
 
@@ -68,25 +77,11 @@ defmodule Idlate.Plugin do
   end
 
   defmacro __before_compile__(_env) do
-    quote do
-      def input(_) do
-        nil
-      end
-
-      def pre(_) do
-        nil
-      end
-
-      def handle(_) do
-        nil
-      end
-
-      def post(_) do
-        nil
-      end
-
-      def output(_) do
-        nil
+    quote unquote: false do
+      Enum.each [:input, :pre, :handle, :post, :output], fn name ->
+        unless Module.get_attribute __MODULE__, name do
+          def unquote(name)(_), do: nil
+        end
       end
 
       def call(_, state) do
@@ -95,6 +90,34 @@ defmodule Idlate.Plugin do
 
       def info(_, state) do
         { :ok, state }
+      end
+    end
+  end
+
+  Enum.each [:input, :pre, :handle, :post, :output], fn name ->
+    defmacro unquote(name)({ var, _, _ } = match, do: body) when var |> is_atom do
+      name = unquote(name)
+
+      quote do
+        Module.put_attribute __MODULE__, unquote(name), true
+
+        def unquote(name)(unquote(match)) do
+          unquote(body)
+        end
+      end
+    end
+
+    defmacro unquote(name)(match, do: body) do
+      name = unquote(name)
+
+      quote do
+        if Module.get_attribute __MODULE__, unquote(name) do
+          raise ArgumentError, "catch all already defined"
+        end
+
+        def unquote(name)(unquote(match)) do
+          unquote(body)
+        end
       end
     end
   end
