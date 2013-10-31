@@ -42,7 +42,7 @@ defmodule Idlate.Event do
   end
 
   def do_trigger(plugins, client, event, custom) do
-    output = case plugins do
+    event = case plugins do
       [plugin] ->
         event = case plugin.pre(event) do
           nil ->
@@ -52,12 +52,16 @@ defmodule Idlate.Event do
             event
         end
 
-        case plugin.handle(event) do
+        event = case plugin.handle(event) do
           nil ->
             nil
 
           event ->
-            plugin.output(event)
+            event
+        end
+
+        if event do
+          event = plugin.post(event)
         end
 
       [plugin | plugins] ->
@@ -94,30 +98,60 @@ defmodule Idlate.Event do
         event
     end
 
-    if output do
-      case plugins |> Enum.find_value &(&1.output(output)) do
-        nil ->
-          nil
-
-        { clients, output } ->
-          Enum.each clients, &Idlate.Client.send(&1, output)
-
-        output when output |> is_binary ->
-          Idlate.Client.send(client, output)
-
-        outputs when outputs |> is_list ->
-          Enum.each outputs, fn
-            { client, output } ->
-              Idlate.Client.send(client, output)
-
-            output ->
-              Idlate.Client.send(client, output)
-          end
-      end
+    if event do
+      do_reply(client, plugins, event)
     end
 
     unless custom do
       Idlate.Client.handled(client)
     end
+  end
+
+  defp do_reply(client, plugins, event) do
+    case output(plugins, event) do
+      nil ->
+        nil
+
+      { clients, output } ->
+        Enum.each clients, &Idlate.Client.send(&1, output)
+
+      output when output |> is_binary ->
+        Idlate.Client.send(client, output)
+
+      outputs when outputs |> is_list ->
+        Enum.each outputs, fn
+          { client, output } ->
+            Idlate.Client.send(client, output)
+
+          output ->
+            Idlate.Client.send(client, output)
+        end
+    end
+  end
+
+  defp output(plugins, { clients, output }) when output |> is_list do
+    output = Enum.map output, fn output ->
+      Enum.find_value plugins, &(&1.output(output))
+    end
+
+    { clients, output }
+  end
+
+  defp output(plugins, output) when output |> is_list do
+    Enum.map output, fn
+      { client, output } ->
+        { client, Enum.find_value(plugins, &(&1.output(output))) }
+
+      output ->
+        Enum.find_value plugins, &(&1.output(output))
+    end
+  end
+
+  defp output(plugins, { clients, output }) do
+    { clients, Enum.find_value(plugins, &(&1.output(output))) }
+  end
+
+  defp output(plugins, output) do
+    Enum.find_value plugins, &(&1.output(output))
   end
 end
