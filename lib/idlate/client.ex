@@ -13,7 +13,6 @@ defmodule Idlate.Client do
 
   def handle_info({ Reagent, :ack }, connection) do
     connection |> Socket.packet! :line
-    connection |> Socket.active! :once
 
     :gen_server.cast Idlate, { Process.self, :connected }
 

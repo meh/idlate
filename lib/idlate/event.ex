@@ -11,12 +11,16 @@ defmodule Idlate.Event do
     Process.spawn __MODULE__, :do_parse, [plugins, client, line]
   end
 
-  def trigger(client, event) do
-    Process.spawn __MODULE__, :do_trigger, [client, event, true]
+  def trigger(client, event, custom // true) when custom in [true, false] do
+    Process.spawn __MODULE__, :do_trigger, [client, event, custom]
   end
 
   def trigger(plugins, client, event) do
-    Process.spawn __MODULE__, :do_trigger, [plugins, client, event, true]
+    trigger(plugins, client, event, true)
+  end
+
+  def trigger(plugins, client, event, custom) do
+    Process.spawn __MODULE__, :do_trigger, [plugins, client, event, custom]
   end
 
   def do_parse(client, line) do
@@ -24,12 +28,12 @@ defmodule Idlate.Event do
   end
 
   def do_parse(plugins, client, line) do
-    case plugins |> Enum.find_value &(&1.input(line).update(client: client)) do
+    case plugins |> Enum.find_value &(&1.input(line)) do
       nil ->
         do_trigger(plugins, client, { :unhandled, line }, false)
 
       event ->
-        do_trigger(plugins, client, event, false)
+        do_trigger(plugins, client, event.update(client: client), false)
     end
   end
 
@@ -40,7 +44,7 @@ defmodule Idlate.Event do
   def do_trigger(plugins, client, event, custom) do
     output = case plugins do
       [plugin] ->
-        event = case event |> plugin.pre do
+        event = case plugin.pre(event) do
           nil ->
             event
 
@@ -48,16 +52,16 @@ defmodule Idlate.Event do
             event
         end
 
-        case event |> plugin.handle do
+        case plugin.handle(event) do
           nil ->
             nil
 
           event ->
-            event |> plugin.output
+            plugin.output(event)
         end
 
       [plugin | plugins] ->
-        event = Enum.reduce plugins, event |> plugin.pre, fn plugin, event ->
+        event = Enum.reduce plugins, plugin.pre(event), fn plugin, event ->
           case plugin.pre(event) do
             nil ->
               event
@@ -67,7 +71,7 @@ defmodule Idlate.Event do
           end
         end
 
-        { _, event } = Enum.reduce plugins, { event, event |> plugin.handle }, fn
+        { _, event } = Enum.reduce plugins, { event, plugin.handle(event) }, fn
           plugin, { event, nil } ->
             { event, plugin.handle(event) }
 
@@ -76,7 +80,7 @@ defmodule Idlate.Event do
         end
 
         if event do
-          event = Enum.reduce plugins, event |> plugin.post, fn plugin, event ->
+          event = Enum.reduce plugins, plugin.post(event), fn plugin, event ->
             case plugin.post(event) do
               nil ->
                 event

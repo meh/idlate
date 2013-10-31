@@ -44,7 +44,7 @@ defmodule Idlate do
   def handle_cast({ client, :connected }, State[clients: clients] = state) do
     state = clients |> Set.add(client) |> state.clients
 
-    Idlate.Event.trigger(client, { :connected, client })
+    Idlate.Event.trigger(client, { :connected, client }, false)
 
     { :noreply, state }
   end
