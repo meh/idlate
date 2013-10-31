@@ -9,7 +9,9 @@ defmodule Idlate do
 
   use GenServer.Behaviour
 
-  defrecord State, supervisor: nil, clients: HashDict.new
+  alias Data.Set
+
+  defrecord State, supervisor: nil, plugins: [], clients: HashSet.new
 
   def init([]) do
     case Idlate.Supervisor.start_link do
@@ -22,26 +24,53 @@ defmodule Idlate do
   end
 
   def handle_cast({ :listen, listener }, State[supervisor: supervisor] = _state) do
-    supervisor |> Idlate.Supervisor.listen(Process.self, listener)
+    supervisor |> Idlate.Supervisor.listen(listener)
 
     { :noreply, _state }
+  end
+
+  def handle_cast({ :plugin, module, priority, configuration }, State[plugins: plugins] = state) do
+    case module.start_link(configuration) do
+      { :ok, _ } ->
+        state = [{ module, priority } | plugins] |> state.plugins
+
+      { :error, reason } ->
+        IO.inspect "HUEHUEHUEHUE #{inspect reason}"
+    end
+
+    { :noreply, state }
   end
 
   def handle_cast({ client, :connected }, State[clients: clients] = state) do
-    state = clients |> Dict.put(Idlate.Client.id(client), client) |> state.clients
+    state = clients |> Set.add(client) |> state.clients
+
+    Idlate.Event.trigger(client, { :connected, client })
 
     { :noreply, state }
   end
 
-  def handle_cast({ client, :disconnected }, State[clients: clients] = state) do
-    state = clients |> Dict.delete(Idlate.Client.id(client)) |> state.clients
-
-    { :noreply, state }
-  end
-
-  def handle_cast({ client, :handle, line }, _state) do
-    Line.start(Process.self, client, line)
+  def handle_cast({ client, :sent, line }, _state) do
+    Idlate.Event.parse(client, line)
 
     { :noreply, _state }
+  end
+
+  def handle_cast({ client, :disconnected, reason }, State[clients: clients] = state) do
+    state = Set.delete(clients, client) |> state.clients
+
+    Idlate.Event.trigger(client, { :disconnected, client, reason })
+
+    { :noreply, state }
+  end
+
+  # TODO: optimize this since it's called on every input line
+  def handle_call(:plugins, _from, State[plugins: plugins] = _state) do
+    plugins = plugins |> Enum.sort(&(elem(&1, 1) > elem(&2, 1))) |> Enum.map(&elem(&1, 0))
+
+    { :reply, plugins, _state }
+  end
+
+  def plugins do
+    :gen_server.call(Idlate, :plugins)
   end
 end

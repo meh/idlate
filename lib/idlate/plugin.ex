@@ -1,4 +1,19 @@
 defmodule Idlate.Plugin do
+  use Behaviour
+
+  @type in_event  :: term
+  @type out_event :: term
+  @type state     :: term
+
+  defcallback call(term, state) :: { :ok, state } | { :error, term, state }
+  defcallback info(term, state) :: { :ok, state } | { :error, term, state }
+
+  defcallback input(String.t) :: in_event
+  defcallback pre(in_event :: term) :: in_event
+  defcallback handle(in_event) :: out_event
+  defcallback post(out_event) :: out_event
+  defcallback output(out_event) :: String.t
+
   defmacro __using__(_opts) do
     quote do
       alias Idlate.Event
@@ -26,7 +41,7 @@ defmodule Idlate.Plugin do
         :gen_server.start_link({ :local, __MODULE__ }, __MODULE__, options, [])
       end
 
-      def handle_call({ :call, args }, _from, state) do
+      def handle_call(args, _from, state) do
         case call(args, state) do
           { :ok, reply, state } ->
             { :reply, reply, state }
@@ -45,16 +60,32 @@ defmodule Idlate.Plugin do
             { :noreply, state }
         end
       end
+
+      def call(term) do
+        :gen_server.call __MODULE__, term
+      end
     end
   end
 
   defmacro __before_compile__(_env) do
     quote do
-      def handle(_) do
-        :unimplemented
+      def input(_) do
+        nil
       end
 
-      def event_for(_) do
+      def pre(_) do
+        nil
+      end
+
+      def handle(_) do
+        nil
+      end
+
+      def post(_) do
+        nil
+      end
+
+      def output(_) do
         nil
       end
 

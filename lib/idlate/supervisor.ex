@@ -16,7 +16,7 @@ defmodule Idlate.Supervisor do
     supervise(children, strategy: :one_for_one)
   end
 
-  def listen(self, server, listener) do
-    :supervisor.start_child self, worker(Reagent, [Idlate.Client, Keyword.merge(listener, env: server)])
+  def listen(self, listener) do
+    :supervisor.start_child self, worker(Reagent, [Idlate.Client, listener])
   end
 end
