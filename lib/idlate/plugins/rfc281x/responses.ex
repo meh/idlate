@@ -1,4 +1,4 @@
-use Idlate.RFC2812.DSL
+use Idlate.RFC281X.DSL
 
 
 # Reply format used by USERHOST to list replies to the query list. The reply string is composed as follows:
