@@ -94,6 +94,54 @@ defmodule Idlate.Plugin do
     end
   end
 
+  defmacro start(do: body) do
+    quote do
+      def init(_) do
+        unquote(body)
+      end
+    end
+  end
+
+  defmacro start(args, do: body) do
+    quote do
+      def init(unquote(args)) do
+        unquote(body)
+      end
+    end
+  end
+
+  defmacro stop(reason, do: body) do
+    quote do
+      def terminate(unquote(reason), _) do
+        unquote(body)
+      end
+    end
+  end
+
+  defmacro stop(reason, state, do: body) do
+    quote do
+      def terminate(unquote(reason), unquote(state)) do
+        unquote(body)
+      end
+    end
+  end
+
+  defmacro call(args, state, do: body) do
+    quote do
+      def call(unquote(args), unquote(state)) do
+        unquote(body)
+      end
+    end
+  end
+
+  defmacro info(args, state, do: body) do
+    quote do
+      def info(unquote(args), unquote(state)) do
+        unquote(body)
+      end
+    end
+  end
+
   Enum.each [:input, :pre, :handle, :post, :output], fn name ->
     defmacro unquote(name)({ var, _, _ } = match, do: body) when var |> is_atom do
       name = unquote(name)
