@@ -4,15 +4,56 @@ defmodule Idlate.Plugin do
   @type in_event  :: term
   @type out_event :: term
   @type state     :: term
+  @type client    :: pid
+  @type output    :: term
 
+  @doc """
+  Call to the plugin gen_server, mostly used for state stuff.
+
+  Note the code is executed in the gen_server, so the process will block until
+  the call is finished, if multiple events are calling this, they will have to
+  wait.
+  """
   defcallback call(term, state) :: { :ok, state } | { :error, term, state }
+
+  @doc """
+  Message sent to the plugin gen_server.
+  """
   defcallback info(term, state) :: { :ok, state } | { :error, term, state }
 
+  @doc """
+  Function called by the event process, only one plugin can return a parsed
+  event, if no plugin knows about this message, an `{ :unhandled, line }` event
+  will be sent instead.
+  """
   defcallback input(String.t) :: in_event
+
+  @doc """
+  Function called by the event process with the parsed input event, every
+  plugin's `pre` is called and the resulting input event is reduced on the
+  rest, this means plugins can modify this input event.
+  """
   defcallback pre(in_event :: term) :: in_event
+
+  @doc """
+  Function called by the event process with the result of the `pre` step, only
+  one plugin can return a resulting output event.
+  """
   defcallback handle(in_event) :: out_event
+
+  @doc """
+  Function called by the event process with the parsed output event, every
+  plugin's `post` is called and the resulting output event is reduced on the
+  rest, this means plugins can modify this output event.
+  """
   defcallback post(out_event) :: out_event
-  defcallback output(out_event) :: String.t
+
+  @doc """
+  Function called by the event process with the resulting output event from the
+  `post` step, only one plugin can return a resulting output.
+  """
+  defcallback output(out_event) ::
+    output | { [client], output | [output] } | [output | { client, output }]
 
   defmacro __using__(_opts) do
     quote do
@@ -26,6 +67,12 @@ defmodule Idlate.Plugin do
       @post   false
       @output false
 
+      def start_link(options) do
+        :gen_server.start_link({ :local, __MODULE__ }, __MODULE__, options, [])
+      end
+
+      use GenServer.Behaviour
+
       def init(_options) do
         { :ok, nil }
       end
@@ -37,12 +84,6 @@ defmodule Idlate.Plugin do
       end
 
       defoverridable terminate: 2
-
-      use GenServer.Behaviour
-
-      def start_link(options) do
-        :gen_server.start_link({ :local, __MODULE__ }, __MODULE__, options, [])
-      end
 
       def handle_call(args, _from, state) do
         case call(args, state) do
