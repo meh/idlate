@@ -204,6 +204,14 @@ defmodule Idlate.Plugin do
     end
   end
 
+  defmacro call(args, { :when, _, [state, guard] }, do: body) do
+    quote do
+      def call(unquote(args), unquote(state)) when unquote(guard) do
+        unquote(body)
+      end
+    end
+  end
+
   defmacro call(args, state, do: body) do
     quote do
       def call(unquote(args), unquote(state)) do
