@@ -61,8 +61,16 @@ defmodule Idlate.Event do
         end
 
         if event do
-          event = plugin.post(event)
+          event = case plugin.post(event) do
+            nil ->
+              event
+
+            event ->
+              event
+          end
         end
+
+        event
 
       [plugin | plugins] ->
         event = Enum.reduce plugins, plugin.pre(event), fn plugin, event ->
