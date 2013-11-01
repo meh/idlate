@@ -64,7 +64,7 @@ end
 
 defnumeric Response.WhoisConnecting, 378, [:nick, :hostname, :ip] do
   def to_string(__MODULE__[nick: nick, hostname: hostname, ip: ip]) do
-	"#{nick} :is connecting from *@#{hostname} #{ip}"
+    "#{nick} :is connecting from *@#{hostname} #{ip}"
   end
 end
 
@@ -119,7 +119,7 @@ end
 # At the end of all reply batches, there must be RPL_ENDOFWHOWAS (even if there was only one reply and it was an error).
 defnumeric Response.EndOfWhowas, 369, [:nick] do
   def to_string(__MODULE__[nick: nick]) do
-	"#{nick} :End of WHOWAS"
+    "#{nick} :End of WHOWAS"
   end
 end
 
@@ -416,7 +416,7 @@ end
 
 defnumeric Response.ServCreatedOn, 3, [:created_on] do
   def to_string(__MODULE__[created_on: created_on]) do
-	":This server was created #{created_on}"
+    ":This server was created #{created_on}"
   end
 end
 
@@ -428,7 +428,7 @@ end
 
 defnumeric Resopnse.IsSupport, 5, [:value] do
   def to_string(__MODULE__[value: value]) do
-	"#{value} :are supported by this server"
+    "#{value} :are supported by this server"
   end
 end
 
@@ -440,13 +440,12 @@ end
 
 defnumeric Response.TopicSetOn, 333, [:channel_name, :set_by, :set_on] do
   def to_string(__MODULE__[channel_name: channel_name, set_by: set_by, set_on: set_on]) do
-	"#{channel_name} #{set_by} #{set_on}"
+    "#{channel_name} #{set_by} #{set_on}"
   end
 end
 
 defnumeric Response.UsingSSL, 671, [:nick] do
   def to_string(__MODULE__[nick: nick]) do
-	"#{nick} :is using a Secure Connection"
+    "#{nick} :is using a Secure Connection"
   end
 end
-
