@@ -10,7 +10,7 @@ defmodule Idlate.RFC281X.DSL do
 
   defmacro defnumeric(name, number, fields, do: body) do
     quote do
-      defrecord Idlate.RFC281X.unquote(name), unquote(fields) do
+      defrecord Idlate.RFC281X.unquote(name), [:client | unquote(fields)] do
         def number do
           unquote(number)
         end
