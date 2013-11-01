@@ -62,6 +62,7 @@ defmodule Idlate.Plugin do
       @before_compile unquote(__MODULE__)
 
       @priority 0
+      @version "0.0.1"
 
       @input  false
       @pre    false
@@ -92,6 +93,12 @@ defmodule Idlate.Plugin do
       end
 
       defoverridable terminate: 2
+
+      def code_change(_, state, _) do
+        { :ok, state }
+      end
+
+      defoverridable code_change: 3
 
       def handle_call(args, _from, state) do
         case call(args, state) do
@@ -143,6 +150,10 @@ defmodule Idlate.Plugin do
 
       def priority do
         @priority
+      end
+
+      def version do
+        @version
       end
     end
   end
@@ -204,6 +215,28 @@ defmodule Idlate.Plugin do
   defmacro info(args, state, do: body) do
     quote do
       def info(unquote(args), unquote(state)) do
+        unquote(body)
+      end
+    end
+  end
+
+  defmacro version(name) do
+    quote do
+      @version unquote(name)
+    end
+  end
+
+  defmacro version(old, state, do: body) do
+    quote do
+      def code_change(unquote(old), unquote(state), _) do
+        unquote(body)
+      end
+    end
+  end
+
+  defmacro version(old, state, extra, do: body) do
+    quote do
+      def code_change(unquote(old), unquote(state), unquote(extra)) do
         unquote(body)
       end
     end
