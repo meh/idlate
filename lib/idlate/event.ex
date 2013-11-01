@@ -107,7 +107,7 @@ defmodule Idlate.Event do
     end
 
     if event do
-      do_reply(client, plugins, event)
+      reply(client, plugins, event)
     end
 
     unless custom do
@@ -115,7 +115,11 @@ defmodule Idlate.Event do
     end
   end
 
-  defp do_reply(client, plugins, event) do
+  def reply(client, event) do
+    reply(client, Idlate.plugins, event)
+  end
+
+  def reply(client, plugins, event) do
     case output(plugins, event) do
       nil ->
         nil
