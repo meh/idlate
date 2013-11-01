@@ -3,26 +3,38 @@ defmodule Idlate do
 
   # See http://elixir-lang.org/docs/stable/Application.Behaviour.html
   # for more information on OTP Applications
-  def start(_type, _args) do
-    :gen_server.start_link { :local, __MODULE__ }, __MODULE__, [], []
+  def start(_type, args) do
+    :gen_server.start_link { :local, __MODULE__ }, __MODULE__, args, []
   end
 
   use GenServer.Behaviour
 
   alias Data.Set
+
   alias Idlate.Supervisor
   alias Idlate.Event
+  alias Idlate.Config
 
   defrecord State, supervisor: nil, name: nil, plugins: [], clients: HashSet.new
 
-  def init([]) do
+  def init(options) do
     case Supervisor.start_link do
       { :ok, pid } ->
+        if path = options[:config] do
+          :gen_server.cast Idlate, { :load, path }
+        end
+
         { :ok, State[supervisor: pid] }
 
       { :error, reason } ->
         { :error, reason }
     end
+  end
+
+  def handle_cast({ :load, path }, _state) do
+    Config.load(path)
+
+    { :noreply, _state }
   end
 
   def handle_cast({ :name, name }, state) do
