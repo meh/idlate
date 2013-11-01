@@ -420,9 +420,9 @@ defnumeric Response.ServCreatedOn, 3, [:created_on] do
   end
 end
 
-defnumeric Response.ServInfo, 4, [:host, :version, :client, :channel] do
-  def to_string(__MODULE__[host: host, version: version, client: client, channel: channel]) do
-    "#{host} idlate-#{version} #{client} #{channel}"
+defnumeric Response.ServInfo, 4, [:host, :version, :modes, :channel] do
+  def to_string(__MODULE__[host: host, version: version, modes: modes, channel: channel]) do
+    "#{host} idlate-#{version} #{modes} #{channel}"
   end
 end
 
