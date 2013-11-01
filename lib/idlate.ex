@@ -10,11 +10,13 @@ defmodule Idlate do
   use GenServer.Behaviour
 
   alias Data.Set
+  alias Idlate.Supervisor
+  alias Idlate.Event
 
-  defrecord State, supervisor: nil, plugins: [], clients: HashSet.new
+  defrecord State, supervisor: nil, name: nil, plugins: [], clients: HashSet.new
 
   def init([]) do
-    case Idlate.Supervisor.start_link do
+    case Supervisor.start_link do
       { :ok, pid } ->
         { :ok, State[supervisor: pid] }
 
@@ -23,16 +25,21 @@ defmodule Idlate do
     end
   end
 
+  def handle_cast({ :name, name }, state) do
+    { :noreply, state.name(name) }
+  end
+
   def handle_cast({ :listen, listener }, State[supervisor: supervisor] = _state) do
-    supervisor |> Idlate.Supervisor.listen(listener)
+    supervisor |> Supervisor.listen(listener)
 
     { :noreply, _state }
   end
 
-  def handle_cast({ :plugin, module, priority, configuration }, State[plugins: plugins] = state) do
-    case module.start_link(configuration) do
-      { :ok, _ } ->
-        state = [{ module, priority } | plugins] |> state.plugins
+  def handle_cast({ :plugin, module, configuration }, State[supervisor: supervisor, plugins: plugins] = state) do
+    case supervisor |> Supervisor.plugin(module, configuration) do
+      { :ok, priority } ->
+        plugins = Enum.sort [{ module, priority } | plugins], &(elem(&1, 1) > elem(&2, 1))
+        state   = state.plugins(plugins)
 
       { :error, reason } ->
         IO.inspect "HUEHUEHUEHUE #{inspect reason}"
@@ -44,13 +51,13 @@ defmodule Idlate do
   def handle_cast({ client, :connected }, State[clients: clients] = state) do
     state = clients |> Set.add(client) |> state.clients
 
-    Idlate.Event.trigger(client, { :connected, client }, false)
+    Event.trigger(client, { :connected, client }, false)
 
     { :noreply, state }
   end
 
   def handle_cast({ client, :sent, line }, _state) do
-    Idlate.Event.parse(client, line)
+    Event.parse(client, line)
 
     { :noreply, _state }
   end
@@ -58,19 +65,25 @@ defmodule Idlate do
   def handle_cast({ client, :disconnected, reason }, State[clients: clients] = state) do
     state = Set.delete(clients, client) |> state.clients
 
-    Idlate.Event.trigger(client, { :disconnected, client, reason })
+    Event.trigger(client, { :disconnected, client, reason })
 
     { :noreply, state }
   end
 
   # TODO: optimize this since it's called on every input line
   def handle_call(:plugins, _from, State[plugins: plugins] = _state) do
-    plugins = plugins |> Enum.sort(&(elem(&1, 1) > elem(&2, 1))) |> Enum.map(&elem(&1, 0))
+    { :reply, Enum.map(plugins, &elem(&1, 0)), _state }
+  end
 
-    { :reply, plugins, _state }
+  def handle_call(:name, _from, State[name: name] = _state) do
+    { :reply, name, _state }
   end
 
   def plugins do
     :gen_server.call(Idlate, :plugins)
+  end
+
+  def name do
+    :gen_server.call(Idlate, :name)
   end
 end

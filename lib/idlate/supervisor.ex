@@ -19,4 +19,14 @@ defmodule Idlate.Supervisor do
   def listen(self, listener) do
     :supervisor.start_child self, worker(Reagent, [Idlate.Client, listener])
   end
+
+  def plugin(self, name, args) do
+    case :supervisor.start_child self, worker(name, [args]) do
+      { :ok, _ } ->
+        { :ok, name.priority }
+
+      error ->
+        error
+    end
+  end
 end

@@ -61,6 +61,8 @@ defmodule Idlate.Plugin do
       @behaviour      unquote(__MODULE__)
       @before_compile unquote(__MODULE__)
 
+      @priority 0
+
       @input  false
       @pre    false
       @handle false
@@ -70,6 +72,12 @@ defmodule Idlate.Plugin do
       def start_link(options) do
         :gen_server.start_link({ :local, __MODULE__ }, __MODULE__, options, [])
       end
+
+      def config(_) do
+        []
+      end
+
+      defoverridable config: 1
 
       use GenServer.Behaviour
 
@@ -132,6 +140,16 @@ defmodule Idlate.Plugin do
       def info(_, state) do
         { :ok, state }
       end
+
+      def priority do
+        @priority
+      end
+    end
+  end
+
+  defmacro priority(n) do
+    quote do
+      @priority unquote(n)
     end
   end
 
@@ -162,6 +180,14 @@ defmodule Idlate.Plugin do
   defmacro stop(reason, state, do: body) do
     quote do
       def terminate(unquote(reason), unquote(state)) do
+        unquote(body)
+      end
+    end
+  end
+
+  defmacro config(variable, do: body) do
+    quote do
+      def config(unquote(variable)) do
         unquote(body)
       end
     end
