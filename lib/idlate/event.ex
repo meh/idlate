@@ -41,73 +41,45 @@ defmodule Idlate.Event do
     do_trigger(Idlate.plugins, client, event, custom)
   end
 
-  def do_trigger(plugins, client, event, custom) do
-    event = case plugins do
-      [plugin] ->
-        event = case plugin.pre(event) do
-          nil ->
-            event
+  def do_trigger([], client, _, custom) do
+    unless custom do
+      Idlate.Client.handled(client)
+    end
+  end
 
-          event ->
-            event
-        end
+  def do_trigger([plugin | plugins], client, event, custom) do
+    event = Enum.reduce plugins, plugin.pre(event) || event, fn plugin, event ->
+      case plugin.pre(event) do
+        nil ->
+          event
 
-        event = case plugin.handle(event) do
-          nil ->
-            nil
+        event ->
+          event
+      end
+    end
 
-          event ->
-            event
-        end
+    { _, event } = Enum.reduce plugins, { event, plugin.handle(event) }, fn
+      plugin, { event, nil } ->
+        { event, plugin.handle(event) }
 
-        if event do
-          event = case plugin.post(event) do
-            nil ->
-              event
-
-            event ->
-              event
-          end
-        end
-
-        event
-
-      [plugin | plugins] ->
-        event = Enum.reduce plugins, plugin.pre(event), fn plugin, event ->
-          case plugin.pre(event) do
-            nil ->
-              event
-
-            event ->
-              event
-          end
-        end
-
-        { _, event } = Enum.reduce plugins, { event, plugin.handle(event) }, fn
-          plugin, { event, nil } ->
-            { event, plugin.handle(event) }
-
-          _plugin, { event, result } ->
-            { event, result }
-        end
-
-        if event do
-          event = Enum.reduce plugins, plugin.post(event), fn plugin, event ->
-            case plugin.post(event) do
-              nil ->
-                event
-
-              event ->
-                event
-            end
-          end
-        end
-
-        event
+      _plugin, { event, result } ->
+        { event, result }
     end
 
     if event do
-      reply(client, plugins, event)
+      event = Enum.reduce plugins, plugin.post(event) || event, fn plugin, event ->
+        case plugin.post(event) do
+          nil ->
+            event
+
+          event ->
+            event
+        end
+      end
+    end
+
+    if event do
+      reply(client, [plugin | plugins], event)
     end
 
     unless custom do
