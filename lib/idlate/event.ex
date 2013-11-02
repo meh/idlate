@@ -30,7 +30,7 @@ defmodule Idlate.Event do
   def do_parse(plugins, client, line) do
     case plugins |> Enum.find_value &(&1.input(line)) do
       nil ->
-        do_trigger(plugins, client, { :unhandled, line }, false)
+        do_trigger(plugins, client, { :unhandled, client, line }, false)
 
       event ->
         do_trigger(plugins, client, event.update(client: client), false)
