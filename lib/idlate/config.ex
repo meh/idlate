@@ -13,6 +13,12 @@ defmodule Idlate.Config do
     end
   end
 
+  defmacro plugin(name) do
+    quote do
+      :gen_server.cast Idlate, { :plugin, Idlate.unquote(name), [] }
+    end
+  end
+
   defmacro plugin(name, do: body) do
     quote do
       :gen_server.cast Idlate, { :plugin, Idlate.unquote(name),
