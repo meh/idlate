@@ -50,7 +50,7 @@ defmodule Idlate do
   def handle_cast({ :plugin, module, configuration }, State[supervisor: supervisor, plugins: plugins] = state) do
     case supervisor |> Supervisor.plugin(module, configuration) do
       { :ok, priority } ->
-        plugins = Enum.sort [{ module, priority } | plugins], &(elem(&1, 1) > elem(&2, 1))
+        plugins = Enum.sort [{ module, priority } | plugins], &(elem(&1, 1) < elem(&2, 1))
         state   = state.plugins(plugins)
 
       { :error, reason } ->
