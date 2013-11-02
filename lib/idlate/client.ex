@@ -36,8 +36,8 @@ defmodule Idlate.Client do
     { :noreply, _state }
   end
 
-  def handle_info({ :tcp_closed, reason }, _state) do
-    :gen_server.cast Idlate, { Process.self, :disconnected, reason }
+  def handle_info({ :tcp_closed, _ }, _state) do
+    :gen_server.cast Idlate, { Process.self, :disconnected }
 
     { :noreply, _state }
   end
