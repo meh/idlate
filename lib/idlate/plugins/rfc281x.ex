@@ -1,7 +1,7 @@
 defmodule Idlate.RFC281X do
   defmodule Numeric do
     def to_string(server, client, record) do
-      ":#{server} #{pad((record |> elem(0)).number)} #{client} #{to_string(record)}"
+      ":#{server} #{pad((record |> elem(0)).number)} #{client || "*"} #{to_string(record)}"
     end
 
     def pad(n) when n < 10,   do: "00#{n}"
@@ -13,12 +13,13 @@ defmodule Idlate.RFC281X do
 
   alias Data.Dict
 
+  alias Idlate.Client
+
   alias __MODULE__.Event
   alias __MODULE__.Response
   alias __MODULE__.Error
-  alias __MODULE__.Parse
 
-  defrecord State, config: HashDict.new, users: HashDict.new, channels: HashDict.new
+  defrecord State, config: HashDict.new, users: HashDict.new, nicks: HashDict.new, channels: HashDict.new
 
   defrecord User, [:id, :nick, :name, :real_name, :host, :modes] do
     def registered?(User[nick: nick, name: name]) when nick |> nil? or name |> nil? do
@@ -27,6 +28,12 @@ defmodule Idlate.RFC281X do
 
     def registered?(_) do
       true
+    end
+
+    defimpl String.Chars do
+      def to_string(User[nick: nick, name: name, host: host]) do
+        "#{nick}!#{name}@#{host}"
+      end
     end
   end
 
@@ -39,8 +46,6 @@ defmodule Idlate.RFC281X do
   end
 
   config body do
-    IO.inspect body
-
     []
   end
 
@@ -48,36 +53,66 @@ defmodule Idlate.RFC281X do
     { :ok, Dict.get(config, name), _state }
   end
 
-  call { :user, :put, pid }, State[users: users] = state do
-    state = users |> Dict.put(pid, User[id: pid]) |> state.users
+  call { :user, :new, pid }, State[users: users] = state do
+    user  = User[id: pid, host: Client.host(pid)]
+    state = users |> Dict.put(pid, user) |> state.users
 
     { :ok, state }
   end
 
-  call { :user, :nick, pid, name }, State[users: users] = state do
-    if users |> Dict.has_key?(name) do
-      { :error, :in_use, state }
+  call { :user, :get, name }, State[users: users, nicks: nicks] = _state when name |> is_binary do
+    id = nicks |> Dict.get(name |> String.downcase)
+
+    if id do
+      { :ok, users |> Dict.get(id), _state }
     else
-      user = Dict.get(users, pid)
-
-      if old = user.nick do
-        state = users |> Dict.delete(old) |> state.users
-      end
-
-      state = users |> Dict.put(name, users |> Dict.get(pid)) |> state.users
-
-      { :ok, state }
+      { :ok, nil, _state }
     end
   end
 
-  call { :user, :delete, pid }, State[users: users] = state do
-    state = users |> Dict.delete(pid) |> state.users
+  call { :user, :get, id }, State[users: users] = _state when id |> is_pid do
+    { :ok, users |> Dict.get(id), _state }
+  end
+
+  call { :user, :update, id, list }, State[users: users] = state do
+    state = users |> Dict.update(id, &(&1.update(list))) |> state.users
 
     { :ok, state }
   end
 
-  call { :user, :get, name }, State[users: users] = _state do
-    { :ok, users |> Dict.get(name), _state }
+  call { :user, :nick, id, name }, State[users: users, nicks: nicks] = state do
+    user = Dict.get(users, id)
+    old  = user.nick && String.downcase(user.nick)
+    new  = String.downcase(name)
+
+    cond do
+      old && old == new ->
+        { :error, :current, state }
+
+      nicks |> Dict.has_key?(new) ->
+        { :error, :in_use, state }
+
+      true ->
+        if old do
+          state = nicks |> Dict.delete(old) |> state.nicks
+        end
+
+        state = nicks |> Dict.put(new, id) |> state.nicks
+        state = users |> Dict.put(id, user.nick(name)) |> state.users
+
+        { :ok, state }
+    end
+  end
+
+  call { :user, :delete, id }, State[users: users, nicks: nicks] = state do
+    user = users |> Dict.get(id)
+
+    if user do
+      state = users |> Dict.delete(id) |> state.users
+      state = nicks |> DIct.delete(user.nick |> String.downcase) |> state.nicks
+    end
+
+    { :ok, state }
   end
 
   call { :channel, :get, name }, State[channels: channels] = _state do
@@ -85,7 +120,7 @@ defmodule Idlate.RFC281X do
   end
 
   handle { :connected, client } do
-    call { :user, :put, client }
+    call { :user, :new, client }
 
     nil
   end
@@ -119,26 +154,31 @@ defmodule Idlate.RFC281X do
       { :error, :in_use } ->
         Error.NicknameInUse[client: client, name: name]
 
+      { :error, :current } ->
+        nil
+
       :ok ->
         nil
     end
   end
 
-  output Error.NicknameInUse[client: id] = record do
-    user = call { :user, :get, id }
-
-    Numeric.to_string(Idlate.name, user.nick || "*", record)
-  end
-
   input "USER " <> rest do
-    [rest, real_name] = String.split(rest, ":", global: false)
-    [name, modes, _]  = String.split(rest, " ")
+    [rest, real_name] = rest |> String.split(":", global: false)
+    [name, modes, _]  = rest |> String.strip |> String.split(" ")
 
     Event.User[name: name, real_name: real_name, modes: modes]
   end
 
-  handle Event.User[name: name, real_name: real_name] do
+  handle Event.User[client: id, name: name, real_name: real_name] do
+    call { :user, :update, id, [name: name, real_name: real_name] }
 
+    user = call { :user, :get, id }
+
+    if user.nick do
+      [ Response.Welcome[client: id, server: Idlate.name, mask: to_string(user)],
+        Response.HostedBy[client: id, server: Idlate.name, version: @version],
+        Response.ServCreatedOn[client: id, created_on: "last thursday"] ]
+    end
   end
 
   input "PRIVMSG " <> rest do
@@ -153,5 +193,25 @@ defmodule Idlate.RFC281X do
     end
 
     Event.Message[to: recipient, content: content]
+  end
+
+  require Response
+
+  Enum.each Response.names, fn name ->
+    output Response.unquote(name)[client: id] = record do
+      user = call { :user, :get, id }
+
+      Numeric.to_string(Idlate.name, user.nick, record)
+    end
+  end
+
+  require Error
+
+  Enum.each Error.names, fn name ->
+    output Error.unquote(name)[client: id] = record do
+      user = call { :user, :get, id }
+
+      Numeric.to_string(Idlate.name, user.nick, record)
+    end
   end
 end
