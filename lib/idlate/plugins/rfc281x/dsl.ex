@@ -8,9 +8,27 @@ defmodule Idlate.RFC281X.DSL do
     end
   end
 
-  defmacro defnumeric(name, number, fields, do: body) do
+  defmacro defnumeric(name, do: body) do
     quote do
-      defrecord Idlate.RFC281X.unquote(name), [:client | unquote(fields)] do
+      defmodule Idlate.RFC281X.unquote(name) do
+        use Idlate.RFC281X.DSL
+
+        Module.register_attribute __MODULE__, :names, accumulate: true
+
+        unquote(body)
+
+        def names do
+          @names
+        end
+      end
+    end
+  end
+
+  defmacro defnumeric(name, number, fields // [], do: body) do
+    quote do
+      @names unquote(name)
+
+      defrecord unquote(name), [:client | unquote(fields)] do
         def number do
           unquote(number)
         end
