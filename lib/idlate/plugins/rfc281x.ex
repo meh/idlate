@@ -119,23 +119,23 @@ defmodule Idlate.RFC281X do
     { :ok, channels |> Dict.get(name), _state }
   end
 
-  handle { :connected, client } do
+  handle :connected, client do
     call { :user, :new, client }
 
     nil
   end
 
-  handle { :disconnected, client } do
+  handle :disconnected, client do
     call { :user, :delete, client }
 
     nil
   end
 
-  input "PASS " <> password do
+  input "PASS " <> password, _ do
     Event.Password[content: password |> String.strip]
   end
 
-  handle Event.Password[content: password] do
+  handle Event.Password[content: password], id do
     if real = call { :config, :password } do
       if password == real do
         IO.puts "the password is right"
@@ -145,14 +145,14 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  input "NICK " <> rest do
+  input "NICK " <> rest, _ do
     Event.Nick[name: rest |> String.strip]
   end
 
-  handle Event.Nick[client: client, name: name] do
-    case call { :user, :nick, client, name } do
+  handle Event.Nick[name: name], id do
+    case call { :user, :nick, id, name } do
       { :error, :in_use } ->
-        Error.NicknameInUse[client: client, name: name]
+        Error.NicknameInUse[ name: name]
 
       { :error, :current } ->
         nil
@@ -162,26 +162,26 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  input "USER " <> rest do
+  input "USER " <> rest, _ do
     [rest, real_name] = rest |> String.split(":", global: false)
     [name, modes, _]  = rest |> String.strip |> String.split(" ")
 
     Event.User[name: name, real_name: real_name, modes: modes]
   end
 
-  handle Event.User[client: id, name: name, real_name: real_name] do
+  handle Event.User[name: name, real_name: real_name], id do
     call { :user, :update, id, [name: name, real_name: real_name] }
 
     user = call { :user, :get, id }
 
     if user.nick do
-      [ Response.Welcome[client: id, server: Idlate.name, mask: to_string(user)],
-        Response.HostedBy[client: id, server: Idlate.name, version: @version],
-        Response.ServCreatedOn[client: id, created_on: "last thursday"] ]
+      [ Response.Welcome[server: Idlate.name, mask: to_string(user)],
+        Response.HostedBy[server: Idlate.name, ip: "0.0.0.0", port: user.port, version: @version],
+        Response.ServCreatedOn[created_on: "last thursday"] ]
     end
   end
 
-  input "PRIVMSG " <> rest do
+  input "PRIVMSG " <> rest, _ do
     [to, content] = String.split(rest, ":", global: false)
 
     recipient = case to |> String.rstrip do
@@ -198,7 +198,7 @@ defmodule Idlate.RFC281X do
   require Response
 
   Enum.each Response.names, fn name ->
-    output Response.unquote(name)[client: id] = record do
+    output Response.unquote(name)[] = record, id do
       user = call { :user, :get, id }
 
       Numeric.to_string(Idlate.name, user.nick, record)
@@ -208,7 +208,7 @@ defmodule Idlate.RFC281X do
   require Error
 
   Enum.each Error.names, fn name ->
-    output Error.unquote(name)[client: id] = record do
+    output Error.unquote(name)[] = record, id do
       user = call { :user, :get, id }
 
       Numeric.to_string(Idlate.name, user.nick, record)
