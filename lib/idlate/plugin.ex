@@ -264,7 +264,7 @@ defmodule Idlate.Plugin do
       end
     end
 
-    defmacro unquote(name)({ var, _, _ } = match, client, do: body) when var |> is_atom do
+    defmacro unquote(name)({ var, _, nil } = match, client, do: body) when var |> is_atom do
       name = unquote(name)
 
       quote do
