@@ -91,11 +91,11 @@ defmodule Idlate.Event do
     reply(client, Idlate.plugins, event)
   end
 
-  def reply(client, plugins, { clients, outputs }) when outputs |> is_list do
+  def reply(client, plugins, { clients, outputs }) when not clients |> is_atom and outputs |> is_list do
     Enum.each outputs, &reply(client, plugins, { clients, &1 })
   end
 
-  def reply(client, plugins, { clients, output }) do
+  def reply(client, plugins, { clients, output }) when not clients |> is_atom do
     Enum.each List.wrap(clients), fn client ->
       client |> Idlate.Client.send Enum.find_value(plugins, &(&1.output(output, client)))
     end
