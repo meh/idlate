@@ -28,7 +28,7 @@ defmodule Idlate.RFC281X.DSL do
     quote do
       @names unquote(name)
 
-      defrecord unquote(name), [:client | unquote(fields)] do
+      defrecord unquote(name), unquote(fields) do
         def number do
           unquote(number)
         end
@@ -44,13 +44,13 @@ defmodule Idlate.RFC281X.DSL do
 
   defmacro defevent(name, fields) do
     quote do
-      defrecord Idlate.RFC281X.Event.unquote(name), [:client | unquote(fields)]
+      defrecord Idlate.RFC281X.Event.unquote(name), unquote(fields)
     end
   end
 
   defmacro defevent(name, fields, do: body) do
     quote do
-      defrecord Idlate.RFC281X.Event.unquote(name), [:client | unquote(fields)] do
+      defrecord Idlate.RFC281X.Event.unquote(name), unquote(fields) do
         unquote(body)
       end
     end
