@@ -7,10 +7,10 @@ defmodule Idlate.Client do
 
   use GenServer.Behaviour
 
-  defrecord State, connection: nil, ip: nil, port: nil, host: nil
+  defrecord State, connection: nil, ip: nil, host: nil, port: nil, secure: nil
 
   def init([connection]) do
-    { ip, port } = connection |> Socket.remote!
+    { ip, _port } = connection |> Socket.remote!
     host         = case Socket.Host.by_address(ip) do
       { :ok, Socket.Host[name: name] } ->
         name
@@ -19,7 +19,11 @@ defmodule Idlate.Client do
         Socket.Address.format(ip)
     end
 
-    { :ok, State[connection: connection, ip: ip, port: port, host: host] }
+    listener = connection |> Reagent.Connection.listener
+    port     = listener |> Reagent.Listener.port
+    secure   = listener |> Reagent.Listener.secure?
+
+    { :ok, State[connection: connection, ip: ip, host: host, port: port, secure: secure] }
   end
 
   def handle_info({ Reagent, :ack }, State[connection: connection] = _state) do
@@ -74,11 +78,27 @@ defmodule Idlate.Client do
     { :reply, host, _state }
   end
 
+  def handle_call(:port, _from, State[port: port] = _state) do
+    { :reply, port, _state }
+  end
+
+  def handle_call(:secure?, _from, State[secure: secure] = _state) do
+    { :reply, secure, _state }
+  end
+
   def ip(pid) do
     :gen_server.call(pid, :ip)
   end
 
   def host(pid) do
     :gen_server.call(pid, :host)
+  end
+
+  def port(pid) do
+    :gen_server.call(pid, :port)
+  end
+
+  def secure?(pid) do
+    :gen_server.call(pid, :secure?)
   end
 end
