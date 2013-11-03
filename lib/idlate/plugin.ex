@@ -250,6 +250,20 @@ defmodule Idlate.Plugin do
   end
 
   Enum.each [:input, :pre, :handle, :post, :output], fn name ->
+    defmacro unquote(name)(match, { :when, _, [client, guard] }, do: body) do
+      name = unquote(name)
+
+      quote do
+        if Module.get_attribute __MODULE__, unquote(name) do
+          raise ArgumentError, "catch all already defined"
+        end
+
+        def unquote(name)(unquote(match), unquote(client)) when unquote(guard) do
+          unquote(body)
+        end
+      end
+    end
+
     defmacro unquote(name)({ var, _, _ } = match, client, do: body) when var |> is_atom do
       name = unquote(name)
 
