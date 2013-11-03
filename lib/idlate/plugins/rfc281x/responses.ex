@@ -407,9 +407,9 @@ defnumeric Response do
     end
   end
 
-  defnumeric HostedBy, 2, [:server, :version] do
-    def to_string(__MODULE__[server: server, version: version]) do
-      ":Your host is #{server}, running version idlate-#{version}"
+  defnumeric HostedBy, 2, [:server, :ip, :port, :version] do
+    def to_string(__MODULE__[server: server, ip: ip, port: port, version: version]) do
+      ":Your host is #{server}[#{ip}/#{port}], running version idlate-#{version}"
     end
   end
 
