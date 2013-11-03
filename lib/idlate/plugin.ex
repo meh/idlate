@@ -26,34 +26,33 @@ defmodule Idlate.Plugin do
   event, if no plugin knows about this message, an `{ :unhandled, line }` event
   will be sent instead.
   """
-  defcallback input(String.t) :: in_event
+  defcallback input(String.t, client) :: in_event
 
   @doc """
   Function called by the event process with the parsed input event, every
   plugin's `pre` is called and the resulting input event is reduced on the
   rest, this means plugins can modify this input event.
   """
-  defcallback pre(in_event :: term) :: in_event
+  defcallback pre(in_event :: term, client) :: in_event
 
   @doc """
   Function called by the event process with the result of the `pre` step, only
   one plugin can return a resulting output event.
   """
-  defcallback handle(in_event) :: out_event
+  defcallback handle(in_event, client) :: out_event
 
   @doc """
   Function called by the event process with the parsed output event, every
   plugin's `post` is called and the resulting output event is reduced on the
   rest, this means plugins can modify this output event.
   """
-  defcallback post(out_event) :: out_event
+  defcallback post(out_event, client) :: out_event
 
   @doc """
   Function called by the event process with the resulting output event from the
   `post` step, only one plugin can return a resulting output.
   """
-  defcallback output(out_event) ::
-    output | { [client], output | [output] } | [output | { client, output }]
+  defcallback output(out_event, client) :: String.t
 
   defmacro __using__(_opts) do
     quote do
@@ -136,7 +135,7 @@ defmodule Idlate.Plugin do
     quote unquote: false do
       Enum.each [:input, :pre, :handle, :post, :output], fn name ->
         unless Module.get_attribute __MODULE__, name do
-          def unquote(name)(_), do: nil
+          def unquote(name)(_, _), do: nil
         end
       end
 
@@ -251,19 +250,19 @@ defmodule Idlate.Plugin do
   end
 
   Enum.each [:input, :pre, :handle, :post, :output], fn name ->
-    defmacro unquote(name)({ var, _, _ } = match, do: body) when var |> is_atom do
+    defmacro unquote(name)({ var, _, _ } = match, client, do: body) when var |> is_atom do
       name = unquote(name)
 
       quote do
         Module.put_attribute __MODULE__, unquote(name), true
 
-        def unquote(name)(unquote(match)) do
+        def unquote(name)(unquote(match), unquote(client)) do
           unquote(body)
         end
       end
     end
 
-    defmacro unquote(name)(match, do: body) do
+    defmacro unquote(name)(match, client, do: body) do
       name = unquote(name)
 
       quote do
@@ -271,7 +270,7 @@ defmodule Idlate.Plugin do
           raise ArgumentError, "catch all already defined"
         end
 
-        def unquote(name)(unquote(match)) do
+        def unquote(name)(unquote(match), unquote(client)) do
           unquote(body)
         end
       end
