@@ -30,6 +30,12 @@ defmodule Idlate.Client do
     { :ok, State[connection: connection, ip: ip, host: host, port: port, secure: secure] }
   end
 
+  def terminate(_, State[connection: connection]) do
+    connection |> Socket.close
+
+    :ok
+  end
+
   def handle_info({ Reagent, :ack }, State[connection: connection] = _state) do
     connection |> Socket.packet! :line
 
