@@ -419,9 +419,9 @@ defnumeric Response do
     end
   end
 
-  defnumeric ServInfo, 4, [:host, :version, :modes, :channel] do
-    def to_string(__MODULE__[host: host, version: version, modes: modes, channel: channel]) do
-      "#{host} idlate-#{version} #{modes} #{channel}"
+  defnumeric ServInfo, 4, [:host, :version, :user, :channel] do
+    def to_string(__MODULE__[host: host, version: version, user: user, channel: channel]) do
+      "#{host} idlate-#{version} #{user} #{channel}"
     end
   end
 

@@ -67,7 +67,7 @@ defnumeric Error do
   end
 
   # Sent to a user when they have joined the maximum number of allowed channels and they try to join another channel.
-  defnumeric WasNoSuchNick, 406, [:nick] do
+  defnumeric NoSuchNick, 406, [:nick] do
     def to_string(__MODULE__[nick: nick]) do
       "#{nick} :There was no such nickname"
     end
@@ -225,7 +225,7 @@ defnumeric Error do
   end
 
   # Returned by the server to any link which tries to change part of the registered details (such as password or user details from second USER message).
-  defnumeric AlreadyRegistred, 462 do
+  defnumeric AlreadyRegistered, 462 do
     def to_string(_) do
       ":You may not reregister"
     end
