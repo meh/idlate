@@ -85,7 +85,7 @@ defmodule Idlate.Event do
 
   def reply(_client, plugins, { clients, output }) when not is_atom(clients) do
     Enum.each List.wrap(clients), fn client ->
-      client |> Idlate.Client.send Enum.find_value(plugins, &(&1.output(output, client)))
+      client |> send Enum.find_value(plugins, &(&1.output(output, client)))
     end
   end
 
@@ -94,6 +94,14 @@ defmodule Idlate.Event do
   end
 
   def reply(client, plugins, output) do
-    client |> Idlate.Client.send Enum.find_value(plugins, &(&1.output(output, client)))
+    client |> send Enum.find_value(plugins, &(&1.output(output, client)))
+  end
+
+  defp send(client, data) when data |> is_list do
+    Enum.each data, &Socket.Stream.send!(client, [&1, "\r\n"])
+  end
+
+  defp send(client, data) do
+    Socket.Stream.send!(client, [data, "\r\n"])
   end
 end
