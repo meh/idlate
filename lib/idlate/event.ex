@@ -11,16 +11,12 @@ defmodule Idlate.Event do
     Process.spawn __MODULE__, :do_parse, [plugins, client, line]
   end
 
-  def trigger(client, event, custom // true) when custom in [true, false] do
-    Process.spawn __MODULE__, :do_trigger, [client, event, custom]
+  def trigger(client, event) do
+    Process.spawn __MODULE__, :do_trigger, [client, event]
   end
 
   def trigger(plugins, client, event) do
-    trigger(plugins, client, event, true)
-  end
-
-  def trigger(plugins, client, event, custom) do
-    Process.spawn __MODULE__, :do_trigger, [plugins, client, event, custom]
+    Process.spawn __MODULE__, :do_trigger, [plugins, client, event]
   end
 
   def do_parse(client, line) do
@@ -30,45 +26,21 @@ defmodule Idlate.Event do
   def do_parse(plugins, client, line) do
     case plugins |> Enum.find_value &(&1.input(line, client)) do
       nil ->
-        do_trigger(plugins, client, { :unhandled, line }, false)
+        do_trigger(plugins, client, { :unhandled, line })
 
       event ->
-        do_trigger(plugins, client, event, false)
+        do_trigger(plugins, client, event)
     end
   end
 
-  def do_trigger(client, event, custom) do
-    do_trigger(Idlate.plugins, client, event, custom)
+  def do_trigger(client, event) do
+    do_trigger(Idlate.plugins, client, event)
   end
 
-  def do_trigger([], client, _, custom) do
-    unless custom do
-      Idlate.Client.handled(client)
-    end
-  end
-
-  def do_trigger([plugin | plugins], client, event, custom) do
-    event = Enum.reduce plugins, plugin.pre(event, client) || event, fn plugin, event ->
-      case plugin.pre(event, client) do
-        nil ->
-          event
-
-        event ->
-          event
-      end
-    end
-
-    { _, event } = Enum.reduce plugins, { event, plugin.handle(event, client) }, fn
-      plugin, { event, nil } ->
-        { event, plugin.handle(event, client) }
-
-      _plugin, { event, result } ->
-        { event, result }
-    end
-
-    if event do
-      event = Enum.reduce plugins, plugin.post(event, client) || event, fn plugin, event ->
-        case plugin.post(event, client) do
+  def do_trigger([plugin | plugins], client, event) do
+    Enum.each List.wrap(event), fn event ->
+      event = Enum.reduce plugins, plugin.pre(event, client) || event, fn plugin, event ->
+        case plugin.pre(event, client) do
           nil ->
             event
 
@@ -76,14 +48,30 @@ defmodule Idlate.Event do
             event
         end
       end
-    end
 
-    if event do
-      reply(client, [plugin | plugins], event)
-    end
+      { _, event } = Enum.reduce plugins, { event, plugin.handle(event, client) }, fn
+        plugin, { event, nil } ->
+          { event, plugin.handle(event, client) }
 
-    unless custom do
-      Idlate.Client.handled(client)
+        _plugin, { event, result } ->
+          { event, result }
+      end
+
+      if event do
+        event = Enum.reduce plugins, plugin.post(event, client) || event, fn plugin, event ->
+          case plugin.post(event, client) do
+            nil ->
+              event
+
+            event ->
+              event
+          end
+        end
+      end
+
+      if event do
+        reply(client, [plugin | plugins], event)
+      end
     end
   end
 
@@ -91,11 +79,11 @@ defmodule Idlate.Event do
     reply(client, Idlate.plugins, event)
   end
 
-  def reply(client, plugins, { clients, outputs }) when not clients |> is_atom and outputs |> is_list do
+  def reply(client, plugins, { clients, outputs }) when not is_atom(clients) and is_list(outputs) do
     Enum.each outputs, &reply(client, plugins, { clients, &1 })
   end
 
-  def reply(client, plugins, { clients, output }) when not clients |> is_atom do
+  def reply(_client, plugins, { clients, output }) when not is_atom(clients) do
     Enum.each List.wrap(clients), fn client ->
       client |> Idlate.Client.send Enum.find_value(plugins, &(&1.output(output, client)))
     end

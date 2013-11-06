@@ -12,7 +12,6 @@ defmodule Idlate do
   alias Data.Set
 
   alias Idlate.Supervisor
-  alias Idlate.Event
   alias Idlate.Config
 
   defrecord State, supervisor: nil, name: nil, plugins: [], clients: HashSet.new
@@ -63,21 +62,11 @@ defmodule Idlate do
   def handle_cast({ client, :connected }, State[clients: clients] = state) do
     state = clients |> Set.add(client) |> state.clients
 
-    Event.trigger(client, :connected, false)
-
     { :noreply, state }
-  end
-
-  def handle_cast({ client, :sent, line }, _state) do
-    Event.parse(client, line)
-
-    { :noreply, _state }
   end
 
   def handle_cast({ client, :disconnected }, State[clients: clients] = state) do
     state = Set.delete(clients, client) |> state.clients
-
-    Event.trigger(client, :disconnected)
 
     { :noreply, state }
   end

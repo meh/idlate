@@ -5,11 +5,15 @@ defmodule Idlate.Client do
     :gen_server.start __MODULE__, [conn], []
   end
 
+  alias Idlate.Event
+
   use GenServer.Behaviour
 
   defrecord State, connection: nil, ip: nil, host: nil, port: nil, secure: nil
 
   def init([connection]) do
+    Process.flag :trap_exit, true
+
     { ip, _port } = connection |> Socket.remote!
     host         = case Socket.Host.by_address(ip) do
       { :ok, Socket.Host[name: name] } ->
@@ -31,11 +35,13 @@ defmodule Idlate.Client do
 
     :gen_server.cast Idlate, { Process.self, :connected }
 
+    Event.trigger(Process.self, :connected) |> Process.link
+
     { :noreply, _state }
   end
 
   def handle_info({ :tcp, _, line }, _state) do
-    :gen_server.cast Idlate, { Process.self, :sent, String.rstrip(line) }
+    Event.parse(Process.self, line |> String.replace(%r/\r?\n$/, "")) |> Process.link
 
     { :noreply, _state }
   end
@@ -43,17 +49,23 @@ defmodule Idlate.Client do
   def handle_info({ :tcp_closed, _ }, _state) do
     :gen_server.cast Idlate, { Process.self, :disconnected }
 
+    Event.trigger(Process.self, :disconnected)
+
+    { :noreply, _state }
+  end
+
+  def handle_info({ :EXIT, _pid, reason }, State[connection: connection] = _state) do
+    connection |> Socket.active! :once
+
+    if reason != :normal do
+      :error_logger.error_report reason
+    end
+
     { :noreply, _state }
   end
 
   def handle_cast(:shutdown, _state) do
     { :stop, :normal, _state }
-  end
-
-  def handle_cast(:handled, State[connection: connection] = _state) do
-    connection |> Socket.active! :once
-
-    { :noreply, _state }
   end
 
   def handle_cast({ :send, data }, State[connection: connection] = _state) do
