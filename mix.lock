@@ -1,7 +1,8 @@
-[ "datastructures": {:git, "git://github.com/meh/elixir-datastructures.git", "9b714be2528066ffc4ecf0f0932e91997fae5624", []},
-  "derp": {:git, "git://github.com/meh/derp.git", "6a2ebab02750b5526d84abb14db0f65c68088787", []},
-  "exts": {:git, "git://github.com/meh/exts.git", "47698ef685d67e86e2df3f4aec2c38729088a6f8", []},
+[ "continuum": {:git, "git://github.com/meh/continuum.git", "c19240908b876667a07fd44c0cec7befed713e2e", []},
+  "datastructures": {:git, "git://github.com/meh/elixir-datastructures.git", "0b4c449f69f17c31d7bf280c910c774ed80802e1", []},
+  "derp": {:git, "git://github.com/meh/derp.git", "d4ec0f6a03ffae2014592c325e549ae908991417", []},
+  "exts": {:git, "git://github.com/meh/exts.git", "040adbb436622f7f00bee6d2b8c64645325b98e6", []},
   "finalizer": {:git, "git://github.com/meh/elixir-finalizer.git", "9c38d9145824a46c66f1a010e137a953a6c78e04", []},
-  "reagent": {:git, "git://github.com/meh/reagent.git", "d01f1d840b99a995bf06a93c382680df947bd705", []},
+  "reagent": {:git, "git://github.com/meh/reagent.git", "bc3e922bd57bfa6ffe1859ff10e34009a36e498c", []},
   "resource": {:git, "git://github.com/tonyrog/resource.git", "b9e1adcadcc8cb59130e0bbecbbe6777bb8d7c78", []},
-  "socket": {:git, "git://github.com/meh/elixir-socket.git", "73eb1f836f6531b9125e8098c19c55d0bb9058ab", []} ]
+  "socket": {:git, "git://github.com/meh/elixir-socket.git", "66a88f0b13b1aeaef32c8de5543074f36f51b3f7", []} ]
