@@ -3,20 +3,22 @@ defmodule Idlate.Event do
   input -> pre(*) -> handle -> post(*) -> output
   """
 
+  import Kernel, except: [send: 2]
+
   def parse(client, line) do
-    Process.spawn __MODULE__, :do_parse, [client, line]
+    spawn __MODULE__, :do_parse, [client, line]
   end
 
   def parse(plugins, client, line) do
-    Process.spawn __MODULE__, :do_parse, [plugins, client, line]
+    spawn __MODULE__, :do_parse, [plugins, client, line]
   end
 
   def trigger(client, event) do
-    Process.spawn __MODULE__, :do_trigger, [client, event]
+    spawn __MODULE__, :do_trigger, [client, event]
   end
 
   def trigger(plugins, client, event) do
-    Process.spawn __MODULE__, :do_trigger, [plugins, client, event]
+    spawn __MODULE__, :do_trigger, [plugins, client, event]
   end
 
   def do_parse(client, line) do
@@ -24,7 +26,7 @@ defmodule Idlate.Event do
   end
 
   def do_parse(plugins, client, line) do
-    case plugins |> Enum.find_value &(&1.input(line, client)) do
+    case plugins |> Enum.find_value(&(&1.input(line, client))) do
       nil ->
         do_trigger(plugins, client, { :unhandled, line })
 
@@ -84,9 +86,9 @@ defmodule Idlate.Event do
   end
 
   def reply(_client, plugins, { clients, output }) when not is_atom(clients) do
-    Enum.each List.wrap(clients), fn client ->
-      client |> send Enum.find_value(plugins, &(&1.output(output, client)))
-    end
+    List.wrap(clients) |> Enum.each(fn client ->
+      send client, Enum.find_value(plugins, &(&1.output(output, client)))
+    end)
   end
 
   def reply(client, plugins, outputs) when outputs |> is_list do
@@ -94,7 +96,7 @@ defmodule Idlate.Event do
   end
 
   def reply(client, plugins, output) do
-    client |> send Enum.find_value(plugins, &(&1.output(output, client)))
+    send client, Enum.find_value(plugins, &(&1.output(output, client)))
   end
 
   defp send(client, data) when data |> is_list do

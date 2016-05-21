@@ -24,11 +24,13 @@ defmodule Idlate.RFC281X.DSL do
     end
   end
 
-  defmacro defnumeric(name, number, fields // [], do: body) do
+  defmacro defnumeric(name, number, fields \\ [], do: body) do
     quote do
       @names unquote(name)
 
-      defrecord unquote(name), unquote(fields) do
+      defmodule unquote(name) do
+        defstruct unquote(fields)
+
         def number do
           unquote(number)
         end
@@ -44,13 +46,17 @@ defmodule Idlate.RFC281X.DSL do
 
   defmacro defevent(name, fields) do
     quote do
-      defrecord Idlate.RFC281X.Event.unquote(name), unquote(fields)
+      defmodule Idlate.RFC281X.Event.unquote(name) do
+        defstruct unquote(fields)
+      end
     end
   end
 
   defmacro defevent(name, fields, do: body) do
     quote do
-      defrecord Idlate.RFC281X.Event.unquote(name), unquote(fields) do
+      defmodule Idlate.RFC281X.Event.unquote(name) do
+        defstruct unquote(fields)
+
         unquote(body)
       end
     end

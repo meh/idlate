@@ -4,7 +4,6 @@ defmodule Idlate.Mixfile do
   def project do
     [ app: :idlate,
       version: "0.0.1",
-      elixir: "~> 0.11.0",
       deps: deps ]
   end
 
@@ -17,7 +16,7 @@ defmodule Idlate.Mixfile do
   # Returns the list of dependencies in the format:
   # { :foobar, "~> 0.1", git: "https://github.com/elixir-lang/foobar.git" }
   defp deps do
-    [ { :reagent, github: "meh/reagent" },
-      { :continuum, github: "meh/continuum" } ]
+    [ { :reagent, "~> 0.1" },
+      { :datastructures, "~> 0.2" } ]
   end
 end

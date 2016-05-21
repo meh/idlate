@@ -79,7 +79,7 @@ defmodule Idlate.Plugin do
 
       defoverridable config: 1
 
-      use GenServer.Behaviour
+      use GenServer
 
       def init(_options) do
         { :ok, nil }

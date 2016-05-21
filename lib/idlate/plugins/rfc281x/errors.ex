@@ -3,79 +3,79 @@ use Idlate.RFC281X.DSL
 defnumeric Error do
   # Used to indicate the nickname parameter supplied to a command is currently unused.
   defnumeric NoSuckNick, 401, [:nick] do
-    def to_string(__MODULE__[nick: nick]) do
+    def to_string(%__MODULE__{nick: nick}) do
       "#{nick} :No such nick/channel"
     end
   end
 
   # Used to indicate the server name given currently doesn"t exist.
   defnumeric NoSuckServer, 402, [:server] do
-    def to_string(__MODULE__[server: server]) do
+    def to_string(%__MODULE__{server: server}) do
       "#{server} :No such server"
     end
   end
 
   # Used to indicate the given channel name is invalid.
   defnumeric NoSuchChannel, 403, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :No such channel"
     end
   end
 
   # Sent to a user who is either (a) not on a channel which is mode +n or (b) not a chanop (or mode +v) on a channel which has mode +m set and is trying to send a PRIVMSG message to that channel.
   defnumeric CannotSendToChan, 404, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :Cannot send to channel"
     end
   end
 
   defnumeric YouNeedVoice, 404, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :You need voice (+v) (#{channel})"
     end
   end
 
   defnumeric NoExternalMessages, 404, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :No external channel messages (#{channel})"
     end
   end
 
   defnumeric YouAreBanned, 404, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :You are banned (#{channel})"
     end
   end
 
   defnumeric NoCTCPs, 404, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :CTCPs are not permitted in this channel (#{channel})"
     end
   end
 
   defnumeric NoColors, 404, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :Color is not permitted in this channel (#{channel})"
     end
   end
 
   # Sent to a user when they have joined the maximum number of allowed channels and they try to join another channel.
   defnumeric TooManyChannels, 405, [:name] do
-    def to_string(__MODULE__[name: name]) do
+    def to_string(%__MODULE__{name: name}) do
       "#{name} :You have joined too many channels"
     end
   end
 
   # Sent to a user when they have joined the maximum number of allowed channels and they try to join another channel.
   defnumeric NoSuchNick, 406, [:nick] do
-    def to_string(__MODULE__[nick: nick]) do
+    def to_string(%__MODULE__{nick: nick}) do
       "#{nick} :There was no such nickname"
     end
   end
 
   # Returned to a client which is attempting to send PRIVMSG/NOTICE using the user@host destination format and for a user@host which has several occurrences.
   defnumeric TooManyTargets, 407, [:recp] do
-    def to_string(__MODULE__[recp: recp]) do
+    def to_string(%__MODULE__{recp: recp}) do
       "#{recp} :Duplicate recipients. No message delivered"
     end
   end
@@ -88,7 +88,7 @@ defnumeric Error do
   end
 
   defnumeric NoRecipient, 411, [:recp] do
-    def to_string(__MODULE__[recp: recp]) do
+    def to_string(%__MODULE__{recp: recp}) do
       ":No recipient given (#{recp})"
     end
   end
@@ -100,21 +100,21 @@ defnumeric Error do
   end
 
   defnumeric NoTopLevel, 413, [:mask] do
-    def to_string(__MODULE__[mask: mask]) do
+    def to_string(%__MODULE__{mask: mask}) do
       "#{mask} :No toplevel domain specified"
     end
   end
 
   # 412 - 414 are returned by PRIVMSG to indicate that the message wasn"t delivered for some reason. ERR_NOTOPLEVEL and ERR_WILDTOPLEVEL are errors that are returned when an invalid use of "PRIVMSG $<server>" or "PRIVMSG #<host>" is attempted.
   defnumeric WildTopLevel, 414, [:mask] do
-    def to_string(__MODULE__[mask: mask]) do
+    def to_string(%__MODULE__{mask: mask}) do
       "#{mask} :Wildcard in toplevel domain"
     end
   end
 
   # Returned to a registered client to indicate that the command sent is unknown by the server.
   defnumeric UnknownCommand, 421, [:command] do
-    def to_string(__MODULE__[command: command]) do
+    def to_string(%__MODULE__{command: command}) do
       "#{command} :Unknown command"
     end
   end
@@ -128,14 +128,14 @@ defnumeric Error do
 
   # Returned by a server in response to an ADMIN message when there is an error in finding the appropriate information.
   defnumeric NoAdminInfo, 423, [:server] do
-    def to_string(__MODULE__[server: server]) do
+    def to_string(%__MODULE__{server: server}) do
       "#{server} :No administrative info available"
     end
   end
 
   # Generic error message used to report a failed file operation during the processing of a message.
   defnumeric FileError, 424, [:file_op, :file] do
-    def to_string(__MODULE__[file_op: file_op, file: file]) do
+    def to_string(%__MODULE__{file_op: file_op, file: file}) do
       ":File error doing #{file_op} on #{file}"
     end
   end
@@ -149,49 +149,49 @@ defnumeric Error do
 
   # Returned after receiving a NICK message which contains characters which do not fall in the defined set. See section x.x.x for details on valid nicknames.
   defnumeric ErroneusNickname, 432, [:name] do
-    def to_string(__MODULE__[name: name]) do
+    def to_string(%__MODULE__{name: name}) do
       "#{name} :Erroneus nickname"
     end
   end
 
   # Returned when a NICK message is processed that results in an attempt to change to a currently existing nickname.
   defnumeric NicknameInUse, 433, [:name] do
-    def to_string(__MODULE__[name: name]) do
+    def to_string(%__MODULE__{name: name}) do
       "#{name} :Nickname is already in use"
     end
   end
 
   # Returned by a server to a client when it detects a nickname collision (registered of a NICK that already exists by another server).
   defnumeric NickCollision, 436, [:nick] do
-    def to_string(__MODULE__[nick: nick]) do
+    def to_string(%__MODULE__{nick: nick}) do
       "#{nick} :Nickname collision KILL"
     end
   end
 
   # Returned by the server to indicate that the target user of the command is not on the given channel.
   defnumeric UserNotInChannel, 441, [:nick, :channel] do
-    def to_string(__MODULE__[nick: nick, channel: channel]) do
+    def to_string(%__MODULE__{nick: nick, channel: channel}) do
       "#{nick} #{channel} :They aren\"t on that channel"
     end
   end
 
   # Returned by the server whenever a client tries to perform a channel effecting command for which the client isn"t a member.
   defnumeric NotOnChannel, 442, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :You\"re not on that channel"
     end
   end
 
   # Returned when a client tries to invite a user to a channel they are already on.
   defnumeric UserOnChannel, 443, [:nick, :channel] do
-    def to_string(__MODULE__[nick: nick, channel: channel]) do
+    def to_string(%__MODULE__{nick: nick, channel: channel}) do
       "#{nick} #{channel} :is already on channel"
     end
   end
 
   # Returned by the summon after a SUMMON command for a user was unable to be performed since they were not logged in.
   defnumeric NoLogin, 444, [:user] do
-    def to_string(__MODULE__[user: user]) do
+    def to_string(%__MODULE__{user: user}) do
       "#{user} :User not logged in"
     end
   end
@@ -219,7 +219,7 @@ defnumeric Error do
 
   # Returned by the server by numerous commands to indicate to the client that it didn"t supply enough parameters.
   defnumeric NeedMoreParams, 461, [:command] do
-    def to_string(__MODULE__[command: command]) do
+    def to_string(%__MODULE__{command: command}) do
       "#{command} :Not enough parameters"
     end
   end
@@ -253,43 +253,43 @@ defnumeric Error do
   end
 
   defnumeric KeySet, 467, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :Channel key already set"
     end
   end
 
   defnumeric ChannelIsFull, 471, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :Cannot join channel (+l)"
     end
   end
 
   defnumeric UnknownMode, 472, [:mode] do
-    def to_string(__MODULE__[mode: mode]) do
+    def to_string(%__MODULE__{mode: mode}) do
       "#{mode} :is unknown mode char to me"
     end
   end
 
   defnumeric InviteOnlyChan, 473, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :Cannot join channel (+i)"
     end
   end
 
   defnumeric BannedFromChan, 474, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :Cannot join channel (+b)"
     end
   end
 
   defnumeric BadChannelKey, 475, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :Cannot join channel (+k)"
     end
   end
 
   defnumeric NoKnock, 480, [:channel, :reason] do
-    def to_string(__MODULE__[channel: channel, reason: reason]) do
+    def to_string(%__MODULE__{channel: channel, reason: reason}) do
       ":Cannot knock on #{channel} (#{reason})"
     end
   end
@@ -303,7 +303,7 @@ defnumeric Error do
 
   # Any command requiring "chanop" privileges (such as MODE messages) must return this error if the client making the attempt is not a chanop on the specified channel.
   defnumeric ChanOPrivsNeeded, 482, [:user] do
-    def to_string(__MODULE__[user: user]) do
+    def to_string(%__MODULE__{user: user}) do
       "#{user} :You\"re not channel operator"
     end
   end
@@ -338,7 +338,7 @@ defnumeric Error do
 
   # custom
   defnumeric BadChanmask, 476, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :Bad channel name"
     end
   end
@@ -350,13 +350,13 @@ defnumeric Error do
   end
 
   defnumeric SSLRequired, 489, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "#{channel} :Cannot join channel (SSL is required)"
     end
   end
 
   defnumeric NoNickChange, 447, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "Can not change nickname while on #{channel} (+N)"
     end
   end
@@ -368,7 +368,7 @@ defnumeric Error do
   end
 
   defnumeric NoInvite, 518, [:channel] do
-    def to_string(__MODULE__[channel: channel]) do
+    def to_string(%__MODULE__{channel: channel}) do
       "Cannot invite (+V) at channel #{channel}"
     end
   end

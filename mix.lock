@@ -1,8 +1,8 @@
-[ "continuum": {:git, "git://github.com/meh/continuum.git", "c19240908b876667a07fd44c0cec7befed713e2e", []},
-  "datastructures": {:git, "git://github.com/meh/elixir-datastructures.git", "0b4c449f69f17c31d7bf280c910c774ed80802e1", []},
+%{"continuum": {:git, "https://github.com/meh/continuum.git", "4125f9d428971568f16da78cec24fddce18d6eca", []},
+  "datastructures": {:hex, :datastructures, "0.2.2", "acec7de9ae6b95502d5c8d8cdac9958f83845035d5f2080782623f2b1222270a", [:mix], []},
   "derp": {:git, "git://github.com/meh/derp.git", "d4ec0f6a03ffae2014592c325e549ae908991417", []},
-  "exts": {:git, "git://github.com/meh/exts.git", "040adbb436622f7f00bee6d2b8c64645325b98e6", []},
+  "exts": {:hex, :exts, "0.3.1", "8ee21efa0e340878704b3224502776b6d5fa15f8ace2d5a7cf71051cb1764f08", [:mix], [{:datastructures, "~> 0.2", [hex: :datastructures, optional: false]}]},
   "finalizer": {:git, "git://github.com/meh/elixir-finalizer.git", "9c38d9145824a46c66f1a010e137a953a6c78e04", []},
-  "reagent": {:git, "git://github.com/meh/reagent.git", "bc3e922bd57bfa6ffe1859ff10e34009a36e498c", []},
+  "reagent": {:hex, :reagent, "0.1.7", "800775ebc77c335fde03952beb8a4759e279c2f614b8364834dc4ccb7354db5f", [:mix], [{:socket, "~> 0.3", [hex: :socket, optional: false]}, {:exts, "~> 0.2", [hex: :exts, optional: false]}]},
   "resource": {:git, "git://github.com/tonyrog/resource.git", "b9e1adcadcc8cb59130e0bbecbbe6777bb8d7c78", []},
-  "socket": {:git, "git://github.com/meh/elixir-socket.git", "66a88f0b13b1aeaef32c8de5543074f36f51b3f7", []} ]
+  "socket": {:hex, :socket, "0.3.4", "4fed773102445eb333b4536610b8d9a9ba3c3e85cc84c7491991af9653819d65", [:mix], []}}

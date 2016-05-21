@@ -1,7 +1,7 @@
 defmodule Idlate.RFC281X do
   defmodule Numeric do
-    def to_string(server, client, record) do
-      ":#{server} #{pad((record |> elem(0)).number)} #{client || "*"} #{to_string(record)}"
+    def to_string(server, client, value) do
+      ":#{server} #{pad((value |> elem(0)).number)} #{client || "*"} #{to_string(value)}"
     end
 
     def pad(n) when n < 10,   do: "00#{n}"
@@ -10,19 +10,23 @@ defmodule Idlate.RFC281X do
   end
 
   use Idlate.Plugin
-
-  alias Data.Dict
+  use Data
 
   alias Idlate.Client
-
   alias __MODULE__.Event
   alias __MODULE__.Response
   alias __MODULE__.Error
 
-  defrecord State, config: HashDict.new, users: HashDict.new, nicks: HashDict.new, channels: HashDict.new
+  @state %{config:   %{},
+           users:    %{},
+           nicks:    %{},
+           activity: %{},
+           channels: %{}}
 
-  defrecord User, [:client, :host, :port, :secure?, :nick, :name, :real_name, :modes, { :channels, [] }] do
-    def registered?(User[nick: nick, name: name]) when nick |> nil? or name |> nil? do
+  defmodule User do
+    defstruct [:client, :host, :port, :secure?, :nick, :name, :real_name, { :modes, MapSet.new }, { :channels, MapSet.new }]
+
+    def registered?(%User{nick: nick, name: name}) when nick |> is_nil or name |> is_nil do
       false
     end
 
@@ -31,14 +35,18 @@ defmodule Idlate.RFC281X do
     end
 
     defimpl String.Chars do
-      def to_string(User[nick: nick, name: name, host: host]) do
+      def to_string(%User{nick: nick, name: name, host: host}) do
         "#{nick}!#{name}@#{host}"
       end
     end
   end
 
-  defrecord Channel, [:name, :password, :modes, { :users, [] }] do
-    defrecord User, [:client, :channel, :modes]
+  defmodule Channel do
+    defstruct [:name, :password, { :modes, MapSet.new }, { :users, MapSet.new }]
+
+    defmodule User do
+      defstruct [:client, { :modes, MapSet.new }]
+    end
   end
 
   defmacrop registered?(client, do: body) do
@@ -48,7 +56,7 @@ defmodule Idlate.RFC281X do
       if var!(user).registered? do
         unquote(body)
       else
-        Error.NotRegistered[]
+        %Error.NotRegistered{}
       end
     end
   end
@@ -70,7 +78,7 @@ defmodule Idlate.RFC281X do
       var!(user) = call { :user, :get, unquote(client) }
 
       if var!(user).registered? do
-        Error.AlreadyRegistered[]
+        %Error.AlreadyRegistered{}
       else
         unquote(body)
       end
@@ -90,41 +98,41 @@ defmodule Idlate.RFC281X do
   end
 
   start do
-    { :ok, State[] }
+    { :ok, @state }
   end
 
   config _body do
     []
   end
 
-  call { :config, name }, State[config: config] = _state do
-    { :ok, Dict.get(config, name), _state }
+  call { :config, name }, %{config: config} = state do
+    { :ok, Dict.get(config, name), state }
   end
 
-  call { :user, :new, client }, State[users: users] = state do
-    Client.Info[host: host, port: port, secure: secure] = client |> Reagent.Connection.env
+  call { :user, :new, client }, %{users: users} = state do
+    %Client.Info{host: host, port: port, secure: secure} = client |> Reagent.Connection.env
 
-    user  = User[client: client, host: host, port: port, secure?: secure]
+    user  = %User{client: client, host: host, port: port, secure?: secure}
     state = users |> Dict.put(client, user) |> state.users
 
     { :ok, state }
   end
 
-  call { :user, :get, name }, State[users: users, nicks: nicks] = _state when name |> is_binary do
+  call { :user, :get, name }, %{users: users, nicks: nicks} = state when name |> is_binary do
     client = nicks |> Dict.get(name |> String.downcase)
 
     if client do
-      { :ok, users |> Dict.get(client), _state }
+      { :ok, users |> Dict.get(client), state }
     else
-      { :ok, nil, _state }
+      { :ok, nil, state }
     end
   end
 
-  call { :user, :get, client }, State[users: users] = _state do
-    { :ok, users |> Dict.get(client), _state }
+  call { :user, :get, client }, %{users: users} = state do
+    { :ok, users |> Dict.get(client), state }
   end
 
-  call { :user, :update, client, list }, State[users: users] = state do
+  call { :user, :update, client, list }, %{users: users} = state do
     user = users |> Dict.get(client)
     user = user.update(list)
 
@@ -133,7 +141,7 @@ defmodule Idlate.RFC281X do
     { :ok, user, state }
   end
 
-  call { :user, :nick, client, name }, State[users: users, nicks: nicks] = state do
+  call { :user, :nick, client, name }, %{users: users, nicks: nicks} = state do
     user = Dict.get(users, client)
     old  = user.nick && String.downcase(user.nick)
     new  = String.downcase(name)
@@ -157,7 +165,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  call { :user, :delete, client }, State[users: users, nicks: nicks] = state do
+  call { :user, :delete, client }, %{users: users, nicks: nicks} = state do
     user = users |> Dict.get(client)
 
     if user do
@@ -168,8 +176,23 @@ defmodule Idlate.RFC281X do
     { :ok, state }
   end
 
-  call { :channel, :get, name }, State[channels: channels] = _state do
-    { :ok, channels |> Dict.get(name), _state }
+  call { :channel, :create, name }, %{channels: channels} = state do
+    channel = %Channel{name: name}
+    state   = channels |> Dict.put(name, channel) |> state.channels
+
+    { :ok, channel, state }
+  end
+
+  call { :channel, :get, name }, %{channels: channels} = state do
+    { :ok, channels |> Dict.get(name), state }
+  end
+
+  call { :channel, :join, name, client }, %{users: users, channels: channels} = state do
+    channel = channels |> Dict.get(name)
+    channel = channel.update_users &Set.add(&1, %User{client: client})
+    state   = channels |> Dict.put(name, channel) |> state.channels
+
+    { :ok, channel, state }
   end
 
   handle :connected, client do
@@ -185,10 +208,10 @@ defmodule Idlate.RFC281X do
   end
 
   input "PASS " <> password, _ do
-    Event.Password[content: password |> String.strip]
+    %Event.Password{content: password |> String.strip}
   end
 
-  handle Event.Password[content: password], client do
+  handle %Event.Password{content: password}, client do
     unregistered? client do
       if real = call { :config, :password } do
         if password == real do
@@ -203,13 +226,13 @@ defmodule Idlate.RFC281X do
   end
 
   input "NICK " <> rest, _ do
-    Event.Nick[name: rest |> String.strip]
+    %Event.Nick{name: rest |> String.strip}
   end
 
-  handle Event.Nick[name: name], client do
+  handle %Event.Nick{name: name}, client do
     case call { :user, :nick, client, name } do
       { :error, :in_use } ->
-        Error.NicknameInUse[ name: name]
+        %Error.NicknameInUse{name: name}
 
       { :error, :current } ->
         nil
@@ -223,55 +246,59 @@ defmodule Idlate.RFC281X do
     [rest, real_name] = rest |> String.split(":", global: false)
     [name, modes, _]  = rest |> String.strip |> String.split(" ")
 
-    Event.User[name: name, real_name: real_name, modes: modes]
+    %Event.User{name: name, real_name: real_name, modes: modes}
   end
 
-  handle Event.User[name: name, real_name: real_name], client do
+  handle %Event.User{name: name, real_name: real_name}, client do
     unregistered? client do
       user = call { :user, :update, client, [name: name, real_name: real_name] }
 
       if user.nick do
-        [ Response.Welcome[server: Idlate.name, mask: to_string(user)],
-          Response.HostedBy[server: Idlate.name, ip: "0.0.0.0", port: user.port, version: @version],
-          Response.ServCreatedOn[created_on: "last thursday"],
-          Response.ServInfo[host: Idlate.name, version: @version, user: "NZo", channel: "abcCehiIkKlLmnNoQsStuvVxyz"] ]
+        [ %Response.Welcome{server: Idlate.name, mask: to_string(user)},
+          %Response.HostedBy{server: Idlate.name, ip: "0.0.0.0", port: user.port, version: @version},
+          %Response.ServCreatedOn{created_on: "last thursday"},
+          %Response.ServInfo{host: Idlate.name, version: @version, user: "NZo", channel: "abcCehiIkKlLmnNoQsStuvVxyz"} ]
       end
     end
   end
 
   input "PING " <> rest, _ do
-    Event.Ping[cookie: rest]
+    %Event.Ping{cookie: rest}
   end
 
-  handle Event.Ping[cookie: cookie], client do
+  handle %Event.Ping{cookie: cookie}, client do
     registered? client do
-      Event.Pong[cookie: cookie]
+      %Event.Pong{cookie: cookie}
     end
   end
 
-  output Event.Pong[cookie: cookie], _ do
+  output %Event.Pong{cookie: cookie}, _ do
     "PONG #{cookie}"
   end
 
   input "JOIN 0", _ do
-    Event.Part[reason: "Left all channels"]
+    %Event.Part{reason: "Left all channels"}
   end
 
   input "JOIN " <> rest, _ do
-    Enum.map String.split(rest, ","), fn rest ->
+    Seq.map String.split(rest, ","), fn rest ->
       case rest |> String.strip |> String.split(" ") do
         [channel, password] ->
-          Event.Join[channel: channel |> String.rstrip, password: password |> String.lstrip]
+          %Event.Join{channel: channel |> String.rstrip, password: password |> String.lstrip}
 
         [channel] ->
-          Event.Join[channel: channel]
+          %Event.Join{channel: channel}
       end
     end
   end
 
-  handle Event.Join[channel: channel, password: password], client do
+  handle %Event.Join{channel: name, password: password}, client do
     registered? client do
-      channel = call { :channel, :get, channel }
+      if channel = call { :channel, :get, name } do
+        call { :channel, :join, name, client }
+      else
+        call { :channel, :create, name }
+      end
     end
   end
 
@@ -286,52 +313,52 @@ defmodule Idlate.RFC281X do
         { :user, name }
     end
 
-    Event.Message[to: recipient, content: content]
+    %Event.Message{to: recipient, content: content}
   end
 
-  handle Event.Message[to: { :channel, name }, content: content], client do
+  handle %Event.Message{to: { :channel, name }, content: content}, client do
     registered? client do
       if to = call { :channel, :get, name } do
-        to.users |> Enum.map fn client ->
-          { client, Event.Message[from: user, to: { :channel, name }, content: content] }
-        end
+        Seq.map(to.users, fn client ->
+          { client, %Event.Message{from: user, to: { :channel, name }, content: content} }
+        end)
       else
-        Error.NoSuchChannel[channel: name]
+        %Error.NoSuchChannel{channel: name}
       end
     end
   end
 
-  handle Event.Message[to: { :user, name }, content: content], client do
+  handle %Event.Message{to: { :user, name }, content: content}, client do
     registered? client do
       if to = call { :user, :get, name } do
-        { to.client, Event.Message[from: user, to: { :user, name }, content: content] }
+        { to.client, %Event.Message{from: user, to: { :user, name }, content: content} }
       else
-        Error.NoSuchNick[nick: name]
+        %Error.NoSuchNick{nick: name}
       end
     end
   end
 
-  output Event.Message[from: user, to: { _, name }, content: content], client do
+  output %Event.Message{from: user, to: { _, name }, content: content}, client do
     ":#{user} PRIVMSG #{name} :#{content}"
   end
 
   require Response
 
-  Enum.each Response.names, fn name ->
-    output Response.unquote(name)[] = record, client do
+  Seq.each Response.names, fn name ->
+    output %Response.unquote(name){} = value, client do
       user = call { :user, :get, client }
 
-      Numeric.to_string(Idlate.name, user.nick, record)
+      Numeric.to_string(Idlate.name, user.nick, value)
     end
   end
 
   require Error
 
-  Enum.each Error.names, fn name ->
-    output Error.unquote(name)[] = record, client do
+  Seq.each Error.names, fn name ->
+    output %Error.unquote(name){} = value, client do
       user = call { :user, :get, client }
 
-      Numeric.to_string(Idlate.name, user.nick, record)
+      Numeric.to_string(Idlate.name, user.nick, value)
     end
   end
 end
