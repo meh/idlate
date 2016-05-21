@@ -15,3 +15,5 @@ plugin RFC281X do
     kill "Killed by %{sender.nick}: %{message}"
   end
 end
+
+plugin Logger

@@ -32,70 +32,45 @@ defmodule Idlate.Client do
   def init([connection]) do
     Process.flag :trap_exit, true
 
-    { ip, _port } = connection |> Socket.remote!
-    host          = case Socket.Host.by_address(ip) do
-      { :ok, %Socket.Host{name: name} } ->
-        name
-
-      { :error, _ } ->
-        Socket.Address.format(ip)
-    end
-
-    listener = connection |> Reagent.Connection.listener
-    port     = listener |> Reagent.Listener.port
-    secure   = listener |> Reagent.Listener.secure?
-
-    connection |> Reagent.Connection.env(%Info{ip: ip, host: host, port: port, secure: secure})
-
-    { :ok, connection }
+    { :ok, { connection, Idlate.Connection.load(connection) } }
   end
 
-  def handle_info({ Reagent, :ack }, connection) do
+  def handle_info({ Reagent, :ack }, { connection, details } = state) do
     connection |> Socket.packet!(:line)
 
-    :gen_server.cast Idlate, { connection, :connected }
+    :gen_server.cast Idlate, { :connected, connection, details }
 
-    Event.trigger(connection, :connected) |> Process.link
+    Event.trigger(connection.id, :connected) |> Process.link
 
-    { :noreply, connection }
+    { :noreply, state }
   end
 
-  def handle_info({ :tcp, _, line }, connection) do
-    Event.parse(connection, line |> String.replace(~r/\r?\n$/, ""))
+  def handle_info({ :tcp, _, line }, { connection, _details } = state) do
+    Event.parse(connection.id, line |> String.replace(~r/\r?\n$/, ""))
       |> Process.link
 
-    { :noreply, connection }
+    { :noreply, state }
   end
 
-  def handle_info({ :tcp_closed, _ }, connection) do
-    :gen_server.cast Idlate, { connection, :disconnected }
+  def handle_info({ :tcp_closed, _ }, { connection, _details } = state) do
+    :gen_server.cast Idlate, { :disconnected, connection }
 
-    Event.trigger(connection, :disconnected)
+    Event.trigger(connection.id, :disconnected)
 
-    { :noreply, connection }
+    { :noreply, state }
   end
 
-  def handle_info({ :EXIT, _pid, reason }, connection) do
+  def handle_info({ :EXIT, _pid, reason }, { connection, _details } = state) do
     connection |> Socket.active!(:once)
 
     if reason != :normal do
-      :error_logger.error_report reason
+      Logger.bare_log(:error, reason)
     end
 
-    { :noreply, connection }
+    { :noreply, state }
   end
 
-  def handle_cast(:shutdown, connection) do
-    { :stop, :normal, connection }
-  end
-
-  def handle_cast({ :send, data }, connection) do
-    Enum.each List.wrap(data), &Socket.Stream.send!(connection, [&1, "\r\n"])
-
-    { :noreply, connection }
-  end
-
-  def handled(pid) do
-    :gen_server.cast(pid, :handled)
+  def handle_cast(:shutdown, state) do
+    { :stop, :normal, state }
   end
 end

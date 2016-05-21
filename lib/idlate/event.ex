@@ -1,20 +1,3 @@
-# Copyleft (ɔ) meh. - http://meh.schizofreni.co
-#
-# This file is part of idlate - https://github.com/meh/idlate
-#
-# idlate is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of
-# the License, or (at your option) any later version.
-#
-# idlate is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public
-# License along with idlate. If not, see <http://www.gnu.org/licenses/>.
-
 defmodule Idlate.Event do
   @moduledoc """
   input -> pre(*) -> handle -> post(*) -> output
@@ -89,38 +72,28 @@ defmodule Idlate.Event do
       end
 
       if event do
-        reply(client, [plugin | plugins], event)
+        reply(client, event, [plugin | plugins])
       end
     end
   end
 
   def reply(client, event) do
-    reply(client, Idlate.plugins, event)
+    reply(client, event, Idlate.plugins)
   end
 
-  def reply(client, plugins, { clients, outputs }) when not is_atom(clients) and is_list(outputs) do
-    Enum.each outputs, &reply(client, plugins, { clients, &1 })
+  def reply(client, { recipient, output }, plugins) when output |> is_list do
+    Enum.each output, &reply(client, { recipient, &1 }, plugins)
   end
 
-  def reply(_client, plugins, { clients, output }) when not is_atom(clients) do
-    List.wrap(clients) |> Enum.each(fn client ->
-      send client, Enum.find_value(plugins, &(&1.output(output, client)))
-    end)
+  def reply(client, { recipient, output }, plugins) do
+    Idlate.reply(recipient, output, plugins)
   end
 
-  def reply(client, plugins, outputs) when outputs |> is_list do
-    Enum.each outputs, &reply(client, plugins, &1)
+  def reply(client, output, plugins) when output |> is_list do
+    Enum.each output, &reply(client, &1, plugins)
   end
 
-  def reply(client, plugins, output) do
-    send client, Enum.find_value(plugins, &(&1.output(output, client)))
-  end
-
-  defp send(client, data) when data |> is_list do
-    Enum.each data, &Socket.Stream.send!(client, [&1, "\r\n"])
-  end
-
-  defp send(client, data) do
-    Socket.Stream.send!(client, [data, "\r\n"])
+  def reply(client, output, plugins) do
+    Idlate.reply(client, output, plugins)
   end
 end

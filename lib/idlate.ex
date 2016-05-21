@@ -21,21 +21,22 @@ defmodule Idlate do
   # See http://elixir-lang.org/docs/stable/Application.Behaviour.html
   # for more information on OTP Applications
   def start(_type, args) do
-    GenServer.start_link __MODULE__, args
+    GenServer.start_link __MODULE__, args, name: Idlate
   end
 
   use GenServer
+  use Data
 
   alias Idlate.Supervisor
   alias Idlate.Config
 
-  @state %{supervisor: nil, name: nil, plugins: HashSet.new, clients: %{}}
+  @state %{supervisor: nil, name: nil, plugins: [], clients: %{}}
 
   def init(options) do
     case Supervisor.start_link do
       { :ok, pid } ->
         if path = options[:config] do
-          :gen_server.cast Idlate, { :load, path }
+          GenServer.cast Idlate, { :load, path }
         end
 
         { :ok, %{@state | supervisor: pid} }
@@ -74,30 +75,64 @@ defmodule Idlate do
     { :noreply, state }
   end
 
-  def handle_cast({ client, :connected }, %{clients: clients} = state) do
-    state = %{state | clients: Set.put(clients, client)}
+  def handle_cast({ :connected, client, details }, %{clients: clients} = state) do
+    state = %{state | clients: clients |> Dict.put(client.id, { client, details })}
 
     { :noreply, state }
   end
 
-  def handle_cast({ client, :disconnected }, %{clients: clients} = state) do
-    { :noreply, %{state | clients: Map.delete(clients, client)} }
+  def handle_cast({ :disconnected, client }, %{clients: clients} = state) do
+    { :noreply, %{state | clients: clients |> Dict.delete(client.id, client)} }
   end
 
   # TODO: optimize this since it's called on every input line
   def handle_call(:plugins, _from, %{plugins: plugins} = state) do
-    { :reply, Enum.map(plugins, &elem(&1, 0)), state }
+    { :reply, plugins |> Dict.keys, state }
   end
 
   def handle_call(:name, _from, %{name: name} = state) do
     { :reply, name, state }
   end
 
+  def handle_call({ :connection, :details, id }, _from, %{clients: clients} = state) do
+    { :reply, clients |> Dict.get(id) |> elem(1), state }
+  end
+
+  def handle_call({ :connection, :stream, id }, _from, %{clients: clients} = state) do
+    { :reply, clients |> Dict.get(id) |> elem(0), state }
+  end
+
   def plugins do
-    :gen_server.call(Idlate, :plugins)
+    GenServer.call(Idlate, :plugins)
   end
 
   def name do
-    :gen_server.call(Idlate, :name)
+    GenServer.call(Idlate, :name)
+  end
+
+  def connection(id, what) when id |> is_reference do
+    GenServer.call(Idlate, { :connection, what, id })
+  end
+
+  def reply(id, data, _ \\ plugins)
+
+  def reply(id, data, plugins) when id |> is_reference do
+    reply(connection(id, :stream), data, plugins)
+  end
+
+  def reply(_stream, data, _plugins) when data |> is_nil do
+    nil
+  end
+
+  def reply(stream, data, plugins) when data |> is_list do
+    Seq.each data, &reply(stream, &1, plugins)
+  end
+
+  def reply(stream, data, _plugins) when data |> is_binary do
+    Socket.Stream.send!(stream, [data, "\r\n"])
+  end
+
+  def reply(stream, data, plugins) do
+    reply(stream, plugins |> Seq.find_value(&(&1.output(data, stream.id))), plugins)
   end
 end
