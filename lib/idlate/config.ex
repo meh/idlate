@@ -16,12 +16,14 @@
 # License along with idlate. If not, see <http://www.gnu.org/licenses/>.
 
 defmodule Idlate.Config do
+  use Data
+
   def load(path) do
     Code.compile_string "import Idlate.Config; #{File.read!(path)}"
   end
 
   defmacro server(do: { :__block__, _, body }) do
-    Enum.each body, fn
+    Seq.each body, fn
       { :name, _, [name] } ->
         :gen_server.cast Idlate, { :name, name }
 

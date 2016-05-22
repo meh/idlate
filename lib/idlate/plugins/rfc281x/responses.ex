@@ -41,7 +41,7 @@ defnumeric Response do
 
   defnumeric IsOn, 303, [:nicks] do
     def to_string(%__MODULE__{nicks: nicks}) do
-      ":#{nicks |> Enum.join(" ")}"
+      ":#{nicks |> Seq.join(" ")}"
     end
   end
 
@@ -121,7 +121,7 @@ defnumeric Response do
   # The RPL_ENDOFWHOIS reply is used to mark the end of processing a WHOIS message.
   defnumeric WhoisChannels, 319, [:nick, :channels] do
     def to_string(%__MODULE__{nick: nick, channels: channels}) do
-      "#{nick} :#{channels |> Enum.join(" ")}"
+      "#{nick} :#{channels |> Seq.join(" ")}"
     end
   end
 
@@ -147,7 +147,7 @@ defnumeric Response do
 
   defnumeric List, 322, [:name, :users, :modes, :topic] do
     def to_string(%__MODULE__{name: name, users: users, modes: modes, topic: topic}) do
-      "#{name} #{Enum.join(users, " ")} #{modes}:#{topic}"
+      "#{name} #{Seq.join(users, " ")} #{modes}:#{topic}"
     end
   end
 
@@ -229,7 +229,7 @@ defnumeric Response do
 
   defnumeric NameReply, 353, [:channel, :users] do
     def to_string(%__MODULE__{channel: channel, users: users}) do
-      "= #{channel} :#{users |> Enum.join("")}"
+      "= #{channel} :#{users |> Seq.join("")}"
     end
   end
 
@@ -420,7 +420,7 @@ defnumeric Response do
 
   defnumeric Welcome, 1, [:server, :mask] do
     def to_string(%__MODULE__{server: server, mask: mask}) do
-      ":Welcome to the #{server} #{mask}"
+      ":Welcome to #{server} #{mask}"
     end
   end
 

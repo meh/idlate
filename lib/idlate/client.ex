@@ -25,43 +25,42 @@ defmodule Idlate.Client do
   alias Idlate.Event
   use GenServer
 
-  defmodule Info do
-    defstruct [:ip, :host, :port, :secure]
-  end
+  @state %{stream:  nil,
+           details: nil}
 
-  def init([connection]) do
+  def init([stream]) do
     Process.flag :trap_exit, true
 
-    { :ok, { connection, Idlate.Connection.load(connection) } }
+    { :ok, %{@state | stream: stream, details: Idlate.Connection.load(stream)} }
   end
 
-  def handle_info({ Reagent, :ack }, { connection, details } = state) do
-    connection |> Socket.packet!(:line)
+  def handle_info({ Reagent, :ack }, %{stream: stream, details: details} = state) do
+    stream |> Socket.packet!(:line)
 
-    :gen_server.cast Idlate, { :connected, connection, details }
+    GenServer.cast Idlate, { :connected, stream, details }
+    Event.trigger!(stream.id, :connected)
 
-    Event.trigger(connection.id, :connected) |> Process.link
+    stream |> Socket.active!(:once)
 
     { :noreply, state }
   end
 
-  def handle_info({ :tcp, _, line }, { connection, _details } = state) do
-    Event.parse(connection.id, line |> String.replace(~r/\r?\n$/, ""))
+  def handle_info({ :tcp, _, line }, %{stream: stream} = state) do
+    Event.parse(stream.id, line |> String.replace(~r/\r?\n$/, ""))
       |> Process.link
 
     { :noreply, state }
   end
 
-  def handle_info({ :tcp_closed, _ }, { connection, _details } = state) do
-    :gen_server.cast Idlate, { :disconnected, connection }
-
-    Event.trigger(connection.id, :disconnected)
+  def handle_info({ :tcp_closed, _ }, %{stream: stream} = state) do
+    Event.trigger!(stream.id, :disconnected)
+    GenServer.cast Idlate, { :disconnected, stream }
 
     { :noreply, state }
   end
 
-  def handle_info({ :EXIT, _pid, reason }, { connection, _details } = state) do
-    connection |> Socket.active!(:once)
+  def handle_info({ :EXIT, _pid, reason }, %{stream: stream} = state) do
+    stream |> Socket.active!(:once)
 
     if reason != :normal do
       Logger.bare_log(:error, reason)

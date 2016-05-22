@@ -194,10 +194,15 @@ defmodule Idlate.RFC281X do
 
   call { :user, :delete, id }, %{users: users, nicks: nicks, channels: channels} = state do
     if user = users |> Dict.get(id) do
-      users    = users    |> Dict.delete(id)
-      nicks    = nicks    |> Dict.delete(user.nick |> String.downcase)
-      channels = channels |> Seq.map(&{ &1, %Channel{&2 | users: &2.users |> Dict.delete(id)} })
-                          |> Seq.into(%{})
+      users = users |> Dict.delete(id)
+
+      if user.nick do
+        nicks = nicks |> Dict.delete(user.nick |> String.downcase)
+      end
+
+      channels = channels
+        |> Seq.map(&{ &1, %Channel{&2 | users: &2.users |> Dict.delete(id)} })
+        |> Seq.into(%{})
 
       state = %{state | users: users, nicks: nicks, channels: channels}
     end
@@ -236,7 +241,7 @@ defmodule Idlate.RFC281X do
     nil
   end
 
-  input "PASS " <> password, _ do
+  decode "PASS " <> password, _ do
     %Event.Password{content: password |> String.strip}
   end
 
@@ -254,7 +259,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  input "NICK " <> rest, _ do
+  decode "NICK " <> rest, _ do
     %Event.Nick{name: rest |> String.strip}
   end
 
@@ -271,7 +276,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  input "USER " <> rest, _ do
+  decode "USER " <> rest, _ do
     [rest, real_name] = rest |> String.split(":", global: false)
     [name, modes, _]  = rest |> String.strip |> String.split(" ")
 
@@ -291,7 +296,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  input "PING " <> rest, _ do
+  decode "PING " <> rest, _ do
     %Event.Ping{cookie: rest}
   end
 
@@ -301,15 +306,15 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  output %Event.Pong{cookie: cookie}, _ do
+  encode %Event.Pong{cookie: cookie}, _ do
     "PONG #{cookie}"
   end
 
-  input "JOIN 0", _ do
+  decode "JOIN 0", _ do
     %Event.Part{reason: "Left all channels"}
   end
 
-  input "JOIN " <> rest, _ do
+  decode "JOIN " <> rest, _ do
     Seq.map String.split(rest, ","), fn rest ->
       case rest |> String.strip |> String.split(" ") do
         [channel, password] ->
@@ -322,7 +327,7 @@ defmodule Idlate.RFC281X do
   end
 
   # TODO: check password
-  handle %Event.Join{channel: name, password: password}, client do
+  handle %Event.Join{channel: name, password: _password}, client do
     registered? client do
       unless call { :channel, :get, name } do
         call { :channel, :create, name }
@@ -332,7 +337,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  input "PRIVMSG " <> rest, _ do
+  decode "PRIVMSG " <> rest, _ do
     [to, content] = String.split(rest, ":", global: false)
 
     recipient = case to |> String.rstrip do
@@ -368,14 +373,14 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  output %Event.Message{from: from, to: { _, to }, content: content}, _client do
+  encode %Event.Message{from: from, to: { _, to }, content: content}, _client do
     ":#{from} PRIVMSG #{to} :#{content}"
   end
 
   require Response
 
   Seq.each Response.names, fn name ->
-    output %Response.unquote(name){} = value, client do
+    encode %Response.unquote(name){} = value, client do
       Numeric.to_string(Idlate.name, call({ :user, :get, client }).nick, value)
     end
   end
@@ -383,7 +388,7 @@ defmodule Idlate.RFC281X do
   require Error
 
   Seq.each Error.names, fn name ->
-    output %Error.unquote(name){} = value, client do
+    encode %Error.unquote(name){} = value, client do
       Numeric.to_string(Idlate.name, call({ :user, :get, client }).nick, value)
     end
   end

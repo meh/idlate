@@ -39,11 +39,18 @@ defmodule Idlate.Plugin do
   defcallback info(term, state) :: { :ok, state } | { :error, term, state }
 
   @doc """
+  Function called by the event process with the raw input line, every plugin's
+  `input` is called and the resulting binary is reduced on the rest, this means
+  plugins can modify the incoming binary.
+  """
+  defcallback input(String.t, client) :: String.t
+
+  @doc """
   Function called by the event process, only one plugin can return a parsed
-  event, if no plugin knows about this message, an `{ :unhandled, line }` event
+  event, if no plugin knows about this message, an `{ :unknown, line }` event
   will be sent instead.
   """
-  defcallback input(String.t, client) :: in_event
+  defcallback decode(String.t, client) :: in_event
 
   @doc """
   Function called by the event process with the parsed input event, every
@@ -69,7 +76,14 @@ defmodule Idlate.Plugin do
   Function called by the event process with the resulting output event from the
   `post` step, only one plugin can return a resulting output.
   """
-  defcallback output(out_event, client) :: String.t
+  defcallback encode(out_event, client) :: String.t
+
+  @doc """
+  Function called by the event process with the raw output line, every plugin's
+  `output` is called and the resulting binary is reduced on the rest, this
+  means plugins can modify the outgoing binary.
+  """
+  defcallback output(String.t, client) :: String.t
 
   defmacro __using__(_opts) do
     quote do
@@ -81,9 +95,11 @@ defmodule Idlate.Plugin do
       @version "0.0.1"
 
       @input  false
+      @decode false
       @pre    false
       @handle false
       @post   false
+      @encode false
       @output false
 
       def start_link(options) do
@@ -150,7 +166,7 @@ defmodule Idlate.Plugin do
 
   defmacro __before_compile__(_env) do
     quote unquote: false do
-      Enum.each [:input, :pre, :handle, :post, :output], fn name ->
+      Enum.each [:input, :decode, :pre, :handle, :post, :encode, :output], fn name ->
         unless Module.get_attribute __MODULE__, name do
           def unquote(name)(_, _), do: nil
         end
@@ -266,7 +282,7 @@ defmodule Idlate.Plugin do
     end
   end
 
-  Enum.each [:input, :pre, :handle, :post, :output], fn name ->
+  Enum.each [:input, :decode, :pre, :handle, :post, :encode, :output], fn name ->
     defmacro unquote(name)(match, { :when, _, [client, guard] }, do: body) do
       name = unquote(name)
 

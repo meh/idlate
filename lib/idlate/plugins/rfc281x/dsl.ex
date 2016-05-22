@@ -20,6 +20,8 @@ defmodule Idlate.RFC281X.DSL do
     quote do
       import unquote(__MODULE__)
 
+      use Data
+
       alias Idlate.RFC281X.User
       alias Idlate.RFC281X.Channel
     end

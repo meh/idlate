@@ -65,7 +65,7 @@ defmodule Idlate do
   def handle_cast({ :plugin, module, configuration }, %{supervisor: supervisor, plugins: plugins} = state) do
     case supervisor |> Supervisor.plugin(module, configuration) do
       { :ok, priority } ->
-        plugins = Enum.sort [{ module, priority } | plugins], &(elem(&1, 1) < elem(&2, 1))
+        plugins = Seq.sort [{ module, priority } | plugins], &(elem(&1, 1) < elem(&2, 1))
         state   = %{state | plugins: plugins}
 
       { :error, reason } ->
@@ -82,7 +82,7 @@ defmodule Idlate do
   end
 
   def handle_cast({ :disconnected, client }, %{clients: clients} = state) do
-    { :noreply, %{state | clients: clients |> Dict.delete(client.id, client)} }
+    { :noreply, %{state | clients: clients |> Dict.delete(client.id)} }
   end
 
   # TODO: optimize this since it's called on every input line
@@ -95,11 +95,23 @@ defmodule Idlate do
   end
 
   def handle_call({ :connection, :details, id }, _from, %{clients: clients} = state) do
-    { :reply, clients |> Dict.get(id) |> elem(1), state }
+    case clients |> Dict.get(id) do
+      nil ->
+        { :reply, nil, state }
+
+      { _, details } ->
+        { :reply, details, state }
+    end
   end
 
   def handle_call({ :connection, :stream, id }, _from, %{clients: clients} = state) do
-    { :reply, clients |> Dict.get(id) |> elem(0), state }
+    case clients |> Dict.get(id) do
+      nil ->
+        { :reply, nil, state }
+
+      { stream, _ } ->
+        { :reply, stream, state }
+    end
   end
 
   def plugins do
@@ -114,25 +126,7 @@ defmodule Idlate do
     GenServer.call(Idlate, { :connection, what, id })
   end
 
-  def reply(id, data, _ \\ plugins)
-
-  def reply(id, data, plugins) when id |> is_reference do
-    reply(connection(id, :stream), data, plugins)
-  end
-
-  def reply(_stream, data, _plugins) when data |> is_nil do
-    nil
-  end
-
-  def reply(stream, data, plugins) when data |> is_list do
-    Seq.each data, &reply(stream, &1, plugins)
-  end
-
-  def reply(stream, data, _plugins) when data |> is_binary do
-    Socket.Stream.send!(stream, [data, "\r\n"])
-  end
-
-  def reply(stream, data, plugins) do
-    reply(stream, plugins |> Seq.find_value(&(&1.output(data, stream.id))), plugins)
+  def reply(id, data, plugs \\ plugins) do
+    Idlate.Event.reply(id, data, plugs)
   end
 end

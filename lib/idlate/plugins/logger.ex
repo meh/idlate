@@ -33,9 +33,13 @@ defmodule Idlate.Logger do
   end
 
   post event, client do
-    Enum.each List.wrap(event), fn event ->
-      IO.puts "-> #{host_for(client)} #{inspect event}"
-    end
+    IO.puts "-> #{host_for(client)} #{inspect event}"
+
+    nil
+  end
+
+  output string, client do
+    IO.puts "~> #{host_for(client)} #{string}"
 
     nil
   end

@@ -18,7 +18,7 @@ defmodule Idlate.Mixfile do
 
   defp deps do
     [ { :reagent, github: "meh/reagent" },
-      { :datastructures, "~> 0.2" } ]
+      { :datastructures, github: "meh/elixir-datastructures", override: true } ]
   end
 
   defp package do

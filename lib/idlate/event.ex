@@ -1,47 +1,81 @@
 defmodule Idlate.Event do
-  @moduledoc """
-  input -> pre(*) -> handle -> post(*) -> output
-  """
-
+  use Data
   import Kernel, except: [send: 2]
 
-  def parse(client, line) do
-    spawn __MODULE__, :do_parse, [client, line]
+  def parse(client, input) do
+    spawn __MODULE__, :do_parse, [client, input]
   end
 
-  def parse(plugins, client, line) do
-    spawn __MODULE__, :do_parse, [plugins, client, line]
+  def parse(client, input, plugins) do
+    spawn __MODULE__, :do_parse, [client, input, plugins]
   end
 
   def trigger(client, event) do
     spawn __MODULE__, :do_trigger, [client, event]
   end
 
-  def trigger(plugins, client, event) do
-    spawn __MODULE__, :do_trigger, [plugins, client, event]
+  def trigger(client, event, plugins) do
+    spawn __MODULE__, :do_trigger, [client, event, plugins]
   end
 
-  def do_parse(client, line) do
-    do_parse(Idlate.plugins, client, line)
+  def trigger!(client, event) do
+    do_trigger(client, event)
   end
 
-  def do_parse(plugins, client, line) do
-    case plugins |> Enum.find_value(&(&1.input(line, client))) do
+  def trigger!(client, event, plugins) do
+    do_trigger(client, event, plugins)
+  end
+
+  @doc """
+  Unroll nested events into a flat list.
+  """
+  def unroll(nil) do
+    []
+  end
+
+  def unroll(event) when event |> is_list do
+    Seq.flat_map event, &unroll(&1)
+  end
+
+  def unroll({ recipient, event }) when recipient |> is_reference do
+    Seq.map unroll(event), &{ recipient, &1 }
+  end
+
+  def unroll(event) do
+    [event]
+  end
+
+  def do_parse(client, input) do
+    do_parse(client, input, Idlate.plugins)
+  end
+
+  def do_parse(client, input, plugins) do
+    input = Seq.reduce plugins, input, fn plugin, input ->
+      case plugin.input(input, client) do
+        nil ->
+          input
+
+        input ->
+          input
+      end
+    end
+
+    case plugins |> Seq.find_value(&(&1.decode(input, client))) do
       nil ->
-        do_trigger(plugins, client, { :unhandled, line })
+        do_trigger(client, { :unknown, input }, plugins)
 
       event ->
-        do_trigger(plugins, client, event)
+        do_trigger(client, event, plugins)
     end
   end
 
   def do_trigger(client, event) do
-    do_trigger(Idlate.plugins, client, event)
+    do_trigger(client, event, Idlate.plugins)
   end
 
-  def do_trigger([plugin | plugins], client, event) do
-    Enum.each List.wrap(event), fn event ->
-      event = Enum.reduce plugins, plugin.pre(event, client) || event, fn plugin, event ->
+  def do_trigger(client, event, plugins) do
+    event = Seq.reduce plugins, event, fn plugin, event ->
+      Seq.flat_map unroll(event), fn event ->
         case plugin.pre(event, client) do
           nil ->
             event
@@ -50,8 +84,10 @@ defmodule Idlate.Event do
             event
         end
       end
+    end
 
-      { _, event } = Enum.reduce plugins, { event, plugin.handle(event, client) }, fn
+    event = Seq.flat_map unroll(event), fn event ->
+      { _, event } = Seq.reduce plugins, { event, nil }, fn
         plugin, { event, nil } ->
           { event, plugin.handle(event, client) }
 
@@ -59,8 +95,12 @@ defmodule Idlate.Event do
           { event, result }
       end
 
-      if event do
-        event = Enum.reduce plugins, plugin.post(event, client) || event, fn plugin, event ->
+      event
+    end
+
+    unless Data.empty?(event) do
+      event = Seq.reduce plugins, event, fn plugin, event ->
+        Seq.flat_map unroll(event), fn event ->
           case plugin.post(event, client) do
             nil ->
               event
@@ -70,30 +110,37 @@ defmodule Idlate.Event do
           end
         end
       end
+    end
 
-      if event do
-        reply(client, event, [plugin | plugins])
-      end
+    unless Data.empty?(event) do
+      reply(client, event, plugins)
     end
   end
 
-  def reply(client, event) do
-    reply(client, event, Idlate.plugins)
+  def reply(id, output, plugins) do
+    Seq.each unroll(output), &do_reply(id, &1, plugins)
   end
 
-  def reply(client, { recipient, output }, plugins) when output |> is_list do
-    Enum.each output, &reply(client, { recipient, &1 }, plugins)
+  defp do_reply(_id, { recipient, output }, plugins) when recipient |> is_reference do
+    do_send(recipient, plugins |> Seq.find_value(&(&1.encode(output, recipient))), plugins)
   end
 
-  def reply(client, { recipient, output }, plugins) do
-    Idlate.reply(recipient, output, plugins)
+  defp do_reply(id, output, plugins) do
+    do_send(id, plugins |> Seq.find_value(&(&1.encode(output, id))), plugins)
   end
 
-  def reply(client, output, plugins) when output |> is_list do
-    Enum.each output, &reply(client, &1, plugins)
-  end
+  defp do_send(_id, nil, _plugins), do: nil
+  defp do_send(id, output, plugins) do
+    output = Seq.reduce plugins, output, fn plugin, output ->
+      case plugin.output(output, id) do
+        nil ->
+          output
 
-  def reply(client, output, plugins) do
-    Idlate.reply(client, output, plugins)
+        output ->
+          output
+      end
+    end
+
+    Socket.Stream.send!(Idlate.connection(id, :stream), [output, "\r\n"])
   end
 end
