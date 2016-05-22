@@ -87,23 +87,19 @@ defmodule Idlate.Event do
       event
     end
 
-    unless Data.empty?(event) do
-      event = Seq.reduce plugins, event, fn plugin, event ->
-        Seq.flat_map unroll(event), fn event ->
-          case plugin.post(event, client, at) do
-            nil ->
-              event
+    event = Seq.reduce plugins, event, fn plugin, event ->
+      Seq.flat_map unroll(event), fn event ->
+        case plugin.post(event, client, at) do
+          nil ->
+            event
 
-            event ->
-              event
-          end
+          event ->
+            event
         end
       end
     end
 
-    unless Data.empty?(event) do
-      reply(client, event, at, plugins)
-    end
+    reply(client, event, at, plugins)
   end
 
   @doc """
