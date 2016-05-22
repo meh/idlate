@@ -299,7 +299,9 @@ defnumeric Response do
     end
   end
 
-  # A server responding to an INFO message is required to send all its 'info' in a series of RPL_INFO messages with a RPL_ENDOFINFO reply to indicate the end of the replies.
+  # A server responding to an INFO message is required to send all its 'info'
+  # in a series of RPL_INFO messages with a RPL_ENDOFINFO reply to indicate the
+  # end of the replies.
   defnumeric EndOfInfo, 374 do
     def to_string(_) do
       ":End of /INFO list"
@@ -318,31 +320,36 @@ defnumeric Response do
     end
   end
 
-  # When responding to the MOTD message and the MOTD file is found, the file is displayed line by line, with each line no longer than 80 characters, using RPL_MOTD format replies.
-  # These should be surrounded by a RPL_MOTDSTART (before the RPL_MOTDs) and an RPL_ENDOFMOTD (after).
+  # When responding to the MOTD message and the MOTD file is found, the file is
+  # displayed line by line, with each line no longer than 80 characters, using
+  # RPL_MOTD format replies.  These should be surrounded by a RPL_MOTDSTART
+  # (before the RPL_MOTDs) and an RPL_ENDOFMOTD (after).
   defnumeric EndOfMotd, 376 do
     def to_string(_) do
       ":End of /MOTD command"
     end
   end
 
-  # RPL_YOUREOPER is sent back to a client which has just successfully issued an OPER message and gained operator status.
+  # RPL_YOUREOPER is sent back to a client which has just successfully issued
+  # an OPER message and gained operator status.
   defnumeric YourOper, 381 do
     def to_string(_) do
       ":You are now an IRC operator"
     end
   end
 
-  # If the REHASH option is used and an operator sends a REHASH message, an RPL_REHASHING is sent back to the operator.
+  # If the REHASH option is used and an operator sends a REHASH message, an
+  # RPL_REHASHING is sent back to the operator.
   defnumeric Rehashing, 382, [:path] do
     def to_string(%__MODULE__{path: path}) do
       "#{path} :Rehashing"
     end
   end
 
-  # When replying to the TIME message, a server must send the reply using the RPL_TIME format above.
-  # The string showing the time need only contain the correct day and time there.
-  # There is no further requirement for the time string.
+  # When replying to the TIME message, a server must send the reply using the
+  # RPL_TIME format above.  The string showing the time need only contain the
+  # correct day and time there.  There is no further requirement for the time
+  # string.
   defnumeric Time, 391, [:host, :time] do
     def to_string(%__MODULE__{host: host, time: time}) do
       "#{host} :#{time}"
@@ -367,9 +374,10 @@ defnumeric Response do
     end
   end
 
-  # If the USERS message is handled by a server, the replies RPL_USERSTART, RPL_USERS, RPL_ENDOFUSERS and RPL_NOUSERS are used.
-  # RPL_USERSSTART must be sent first, following by either a sequence of RPL_USERS or a single RPL_NOUSER.
-  # Following this is RPL_ENDOFUSERS.
+  # If the USERS message is handled by a server, the replies RPL_USERSTART,
+  # RPL_USERS, RPL_ENDOFUSERS and RPL_NOUSERS are used.  RPL_USERSSTART must be
+  # sent first, following by either a sequence of RPL_USERS or a single
+  # RPL_NOUSER.  Following this is RPL_ENDOFUSERS.
   defnumeric NoUsers, 395 do
     def to_string(_) do
       ":Nobody logged in"

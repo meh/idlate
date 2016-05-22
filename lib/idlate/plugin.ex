@@ -190,12 +190,18 @@ defmodule Idlate.Plugin do
     end
   end
 
+  @doc """
+  Defines the plugin priority, events are dispatched in priority order.
+  """
   defmacro priority(n) do
     quote do
       @priority unquote(n)
     end
   end
 
+  @doc """
+  Defines plugin initialization code.
+  """
   defmacro start(do: body) do
     quote do
       def init(_) do
@@ -212,6 +218,9 @@ defmodule Idlate.Plugin do
     end
   end
 
+  @doc """
+  Defines plugin deinitialization.
+  """
   defmacro stop(reason, do: body) do
     quote do
       def terminate(unquote(reason), _) do
@@ -228,6 +237,9 @@ defmodule Idlate.Plugin do
     end
   end
 
+  @doc """
+  Defines configuration parameters.
+  """
   defmacro config(variable, do: body) do
     quote do
       def config(unquote(variable)) do
@@ -236,6 +248,9 @@ defmodule Idlate.Plugin do
     end
   end
 
+  @doc """
+  Defines a plugin remote call.
+  """
   defmacro call(args, { :when, _, [state, guard] }, do: body) do
     quote do
       def call(unquote(args), unquote(state)) when unquote(guard) do
@@ -252,6 +267,9 @@ defmodule Idlate.Plugin do
     end
   end
 
+  @doc """
+  Handles custom messages.
+  """
   defmacro info(args, state, do: body) do
     quote do
       def info(unquote(args), unquote(state)) do
@@ -260,12 +278,18 @@ defmodule Idlate.Plugin do
     end
   end
 
+  @doc """
+  Defines the plugin version.
+  """
   defmacro version(name) do
     quote do
       @version unquote(name)
     end
   end
 
+  @doc """
+  Defines plugin update code.
+  """
   defmacro version(old, state, do: body) do
     quote do
       def code_change(unquote(old), unquote(state), _) do

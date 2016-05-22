@@ -2,14 +2,23 @@ defmodule Idlate.Event do
   use Data
   import Kernel, except: [send: 2]
 
+  @doc """
+  Parses an event from a binary and triggers it.
+  """
   def parse(client, input, plugins \\ Idlate.plugins) do
     spawn __MODULE__, :do_parse, [client, input, plugins]
   end
 
+  @doc """
+  Triggers an event asynchronously.
+  """
   def trigger(client, event, plugins \\ Idlate.plugins) do
     spawn __MODULE__, :do_trigger, [client, event, plugins]
   end
 
+  @doc """
+  Triggers an event synchronously.
+  """
   def trigger!(client, event, plugins \\ Idlate.plugins) do
     do_trigger(client, event, plugins)
   end
@@ -97,6 +106,9 @@ defmodule Idlate.Event do
     end
   end
 
+  @doc """
+  Sends a reply to the given client.
+  """
   def reply(id, output, plugins \\ Idlate.plugins) do
     Seq.each unroll(output), &do_reply(id, &1, plugins)
   end

@@ -18,8 +18,6 @@
 defmodule Idlate do
   use Application
 
-  # See http://elixir-lang.org/docs/stable/Application.Behaviour.html
-  # for more information on OTP Applications
   def start(_type, args) do
     GenServer.start_link __MODULE__, args, name: Idlate
   end
@@ -85,7 +83,6 @@ defmodule Idlate do
     { :noreply, %{state | clients: clients |> Dict.delete(client.id)} }
   end
 
-  # TODO: optimize this since it's called on every input line
   def handle_call(:plugins, _from, %{plugins: plugins} = state) do
     { :reply, plugins |> Dict.keys, state }
   end

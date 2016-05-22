@@ -18,10 +18,16 @@
 defmodule Idlate.Config do
   use Data
 
+  @doc """
+  Load a configuration file and merge it to the current configuration.
+  """
   def load(path) do
     Code.compile_string "import Idlate.Config; #{File.read!(path)}"
   end
 
+  @doc """
+  Sets server information.
+  """
   defmacro server(do: { :__block__, _, body }) do
     Seq.each body, fn
       { :name, _, [name] } ->
@@ -32,12 +38,18 @@ defmodule Idlate.Config do
     end
   end
 
+  @doc """
+  Loads the plugin.
+  """
   defmacro plugin(name) do
     quote do
       :gen_server.cast Idlate, { :plugin, Idlate.unquote(name), [] }
     end
   end
 
+  @doc """
+  Loads the plugin with the given configuration.
+  """
   defmacro plugin(name, do: body) do
     quote do
       :gen_server.cast Idlate, { :plugin, Idlate.unquote(name),
