@@ -30,53 +30,19 @@ defmodule Idlate.RFC281X do
   use Data
 
   alias Idlate.Connection
+
+  alias __MODULE__.Numeric
   alias __MODULE__.Event
   alias __MODULE__.Response
   alias __MODULE__.Error
+  alias __MODULE__.Channel
+  alias __MODULE__.User
 
   @state %{config:   %{},
            users:    %{},
            nicks:    %{},
            activity: %{},
            channels: %{}}
-
-  defmodule User do
-    defstruct id:        nil,
-              host:      nil,
-              port:      nil,
-              secure?:   false,
-              nick:      nil,
-              name:      nil,
-              real_name: nil,
-              modes:     MapSet.new,
-              channels:  MapSet.new
-
-    def registered?(%User{nick: nick, name: name}) when nick |> is_nil or name |> is_nil do
-      false
-    end
-
-    def registered?(_) do
-      true
-    end
-
-    defimpl String.Chars do
-      def to_string(%User{nick: nick, name: name, host: host}) do
-        "#{nick}!#{name}@#{host}"
-      end
-    end
-  end
-
-  defmodule Channel do
-    defstruct name:     nil,
-              password: nil,
-              modes:    MapSet.new,
-              users:    %{}
-
-    defmodule User do
-      defstruct id:    nil,
-                modes: MapSet.new
-    end
-  end
 
   defmacrop registered?(id, do: body) do
     quote do
