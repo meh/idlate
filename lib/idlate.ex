@@ -126,7 +126,7 @@ defmodule Idlate do
     GenServer.call(Idlate, { :connection, what, id })
   end
 
-  def reply(id, data, plugs \\ plugins) do
-    Idlate.Event.reply(id, data, plugs)
+  def reply(id, output, plugins \\ Idlate.plugins) do
+    Idlate.Event.reply(id, output, plugins)
   end
 end

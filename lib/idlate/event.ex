@@ -2,27 +2,15 @@ defmodule Idlate.Event do
   use Data
   import Kernel, except: [send: 2]
 
-  def parse(client, input) do
-    spawn __MODULE__, :do_parse, [client, input]
-  end
-
-  def parse(client, input, plugins) do
+  def parse(client, input, plugins \\ Idlate.plugins) do
     spawn __MODULE__, :do_parse, [client, input, plugins]
   end
 
-  def trigger(client, event) do
-    spawn __MODULE__, :do_trigger, [client, event]
-  end
-
-  def trigger(client, event, plugins) do
+  def trigger(client, event, plugins \\ Idlate.plugins) do
     spawn __MODULE__, :do_trigger, [client, event, plugins]
   end
 
-  def trigger!(client, event) do
-    do_trigger(client, event)
-  end
-
-  def trigger!(client, event, plugins) do
+  def trigger!(client, event, plugins \\ Idlate.plugins) do
     do_trigger(client, event, plugins)
   end
 
@@ -45,10 +33,6 @@ defmodule Idlate.Event do
     [event]
   end
 
-  def do_parse(client, input) do
-    do_parse(client, input, Idlate.plugins)
-  end
-
   def do_parse(client, input, plugins) do
     input = Seq.reduce plugins, input, fn plugin, input ->
       case plugin.input(input, client) do
@@ -67,10 +51,6 @@ defmodule Idlate.Event do
       event ->
         do_trigger(client, event, plugins)
     end
-  end
-
-  def do_trigger(client, event) do
-    do_trigger(client, event, Idlate.plugins)
   end
 
   def do_trigger(client, event, plugins) do
@@ -117,7 +97,7 @@ defmodule Idlate.Event do
     end
   end
 
-  def reply(id, output, plugins) do
+  def reply(id, output, plugins \\ Idlate.plugins) do
     Seq.each unroll(output), &do_reply(id, &1, plugins)
   end
 
