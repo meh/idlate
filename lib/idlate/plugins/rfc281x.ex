@@ -16,16 +16,6 @@
 # License along with idlate. If not, see <http://www.gnu.org/licenses/>.
 
 defmodule Idlate.RFC281X do
-  defmodule Numeric do
-    def to_string(server, client, %{__struct__: module} = value) do
-      ":#{server} #{pad(module.number)} #{client || "*"} #{module.to_string(value)}"
-    end
-
-    def pad(n) when n < 10,   do: "00#{n}"
-    def pad(n) when n < 100,  do: "0#{n}"
-    def pad(n) when n < 1000, do: "#{n}"
-  end
-
   use Idlate.Plugin
   use Data
 
@@ -207,7 +197,7 @@ defmodule Idlate.RFC281X do
     nil
   end
 
-  decode "PASS " <> password, _ do
+  decode "PASS " <> password do
     %Event.Password{content: password |> String.strip}
   end
 
@@ -225,7 +215,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  decode "NICK " <> rest, _ do
+  decode "NICK " <> rest do
     %Event.Nick{name: rest |> String.strip}
   end
 
@@ -242,7 +232,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  decode "USER " <> rest, _ do
+  decode "USER " <> rest do
     [rest, real_name] = rest |> String.split(":", global: false)
     [name, modes, _]  = rest |> String.strip |> String.split(" ")
 
@@ -262,7 +252,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  decode "PING " <> rest, _ do
+  decode "PING " <> rest do
     %Event.Ping{cookie: rest}
   end
 
@@ -272,7 +262,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  encode %Event.Pong{cookie: cookie}, _ do
+  encode %Event.Pong{cookie: cookie} do
     "PONG #{cookie}"
   end
 
@@ -280,7 +270,7 @@ defmodule Idlate.RFC281X do
     %Event.Part{reason: "Left all channels"}
   end
 
-  decode "JOIN " <> rest, _ do
+  decode "JOIN " <> rest do
     Seq.map String.split(rest, ","), fn rest ->
       case rest |> String.strip |> String.split(" ") do
         [channel, password] ->
@@ -303,7 +293,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  decode "PRIVMSG " <> rest, _ do
+  decode "PRIVMSG " <> rest do
     [to, content] = String.split(rest, ":", global: false)
 
     recipient = case to |> String.rstrip do
@@ -339,7 +329,7 @@ defmodule Idlate.RFC281X do
     end
   end
 
-  encode %Event.Message{from: from, to: { _, to }, content: content}, _client do
+  encode %Event.Message{from: from, to: { _, to }, content: content} do
     ":#{from} PRIVMSG #{to} :#{content}"
   end
 

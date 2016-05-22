@@ -5,22 +5,22 @@ defmodule Idlate.Event do
   @doc """
   Parses an event from a binary and triggers it.
   """
-  def parse(client, input, plugins \\ Idlate.plugins) do
-    spawn __MODULE__, :do_parse, [client, input, plugins]
+  def parse(client, input, at \\ :erlang.timestamp, plugins \\ Idlate.plugins) do
+    spawn __MODULE__, :do_parse, [client, input, at, plugins]
   end
 
   @doc """
   Triggers an event asynchronously.
   """
-  def trigger(client, event, plugins \\ Idlate.plugins) do
-    spawn __MODULE__, :do_trigger, [client, event, plugins]
+  def trigger(client, event, at \\ :erlang.timestamp, plugins \\ Idlate.plugins) do
+    spawn __MODULE__, :do_trigger, [client, event, at, plugins]
   end
 
   @doc """
   Triggers an event synchronously.
   """
-  def trigger!(client, event, plugins \\ Idlate.plugins) do
-    do_trigger(client, event, plugins)
+  def trigger!(client, event, at \\ :erlang.timestamp, plugins \\ Idlate.plugins) do
+    do_trigger(client, event, at, plugins)
   end
 
   @doc """
@@ -42,9 +42,9 @@ defmodule Idlate.Event do
     [event]
   end
 
-  def do_parse(client, input, plugins) do
+  def do_parse(client, input, at, plugins) do
     input = Seq.reduce plugins, input, fn plugin, input ->
-      case plugin.input(input, client) do
+      case plugin.input(input, client, at) do
         nil ->
           input
 
@@ -53,19 +53,19 @@ defmodule Idlate.Event do
       end
     end
 
-    case plugins |> Seq.find_value(&(&1.decode(input, client))) do
+    case plugins |> Seq.find_value(&(&1.decode(input, client, at))) do
       nil ->
-        do_trigger(client, { :unknown, input }, plugins)
+        do_trigger(client, { :unknown, input }, at, plugins)
 
       event ->
-        do_trigger(client, event, plugins)
+        do_trigger(client, event, at, plugins)
     end
   end
 
-  def do_trigger(client, event, plugins) do
+  def do_trigger(client, event, at, plugins) do
     event = Seq.reduce plugins, event, fn plugin, event ->
       Seq.flat_map unroll(event), fn event ->
-        case plugin.pre(event, client) do
+        case plugin.pre(event, client, at) do
           nil ->
             event
 
@@ -78,7 +78,7 @@ defmodule Idlate.Event do
     event = Seq.flat_map unroll(event), fn event ->
       { _, event } = Seq.reduce plugins, { event, nil }, fn
         plugin, { event, nil } ->
-          { event, plugin.handle(event, client) }
+          { event, plugin.handle(event, client, at) }
 
         _plugin, { event, result } ->
           { event, result }
@@ -90,7 +90,7 @@ defmodule Idlate.Event do
     unless Data.empty?(event) do
       event = Seq.reduce plugins, event, fn plugin, event ->
         Seq.flat_map unroll(event), fn event ->
-          case plugin.post(event, client) do
+          case plugin.post(event, client, at) do
             nil ->
               event
 
@@ -102,29 +102,29 @@ defmodule Idlate.Event do
     end
 
     unless Data.empty?(event) do
-      reply(client, event, plugins)
+      reply(client, event, at, plugins)
     end
   end
 
   @doc """
   Sends a reply to the given client.
   """
-  def reply(id, output, plugins \\ Idlate.plugins) do
-    Seq.each unroll(output), &do_reply(id, &1, plugins)
+  def reply(id, output, at \\ :erlang.timestamp, plugins \\ Idlate.plugins) do
+    Seq.each unroll(output), &do_reply(id, &1, at, plugins)
   end
 
-  defp do_reply(_id, { recipient, output }, plugins) when recipient |> is_reference do
-    do_send(recipient, plugins |> Seq.find_value(&(&1.encode(output, recipient))), plugins)
+  defp do_reply(_id, { recipient, output }, at, plugins) when recipient |> is_reference do
+    do_send(recipient, plugins |> Seq.find_value(&(&1.encode(output, recipient, at))), at, plugins)
   end
 
-  defp do_reply(id, output, plugins) do
-    do_send(id, plugins |> Seq.find_value(&(&1.encode(output, id))), plugins)
+  defp do_reply(id, output, at, plugins) do
+    do_send(id, plugins |> Seq.find_value(&(&1.encode(output, id, at))), at, plugins)
   end
 
-  defp do_send(_id, nil, _plugins), do: nil
-  defp do_send(id, output, plugins) do
+  defp do_send(_id, nil, _at, _plugins), do: nil
+  defp do_send(id, output, at, plugins) do
     output = Seq.reduce plugins, output, fn plugin, output ->
-      case plugin.output(output, id) do
+      case plugin.output(output, id, at) do
         nil ->
           output
 
